@@ -1,0 +1,232 @@
+// Solis API - Prisma Schema (Multi-Tenant)
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// TENANTS (Schema: public)
+// ============================================
+
+model Tenant {
+  id           String    @id @default(uuid()) @db.Uuid
+  subdomain    String    @unique @db.VarChar(100)
+  companyName  String    @map("company_name") @db.VarChar(255)
+  cnpj         String?   @unique @db.VarChar(18)
+  active       Boolean   @default(true)
+  plan         String    @default("basic") @db.VarChar(50)
+  maxTerminals Int       @default(1) @map("max_terminals")
+  maxUsers     Int       @default(5) @map("max_users")
+  features     Json      @default("{}")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  // Relacionamentos
+  tokenVinculacoes TokenVinculacao[]
+
+  @@index([subdomain, active])
+  @@index([active])
+  @@map("tenants")
+}
+
+// Tabela para gerenciar tokens de vinculação de agentes/terminais
+model TokenVinculacao {
+  id         String    @id @default(uuid()) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  token      String    @unique @db.VarChar(500)
+  nomeAgente String    @map("nome_agente") @db.VarChar(100)
+  tipo       String    @default("terminal") @db.VarChar(50) // terminal, mobile, etc
+  ativo      Boolean   @default(true)
+  validoAte  DateTime? @map("valido_ate")
+  ultimoUso  DateTime? @map("ultimo_uso")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([token])
+  @@index([ativo, validoAte])
+  @@map("token_vinculacoes")
+}
+
+// ============================================
+// EMPRESA (Dados para Cupom Fiscal)
+// ============================================
+
+model Empresa {
+  id                String    @id @default(uuid())
+  
+  // Dados da Empresa
+  razaoSocial       String    @map("razao_social") @db.VarChar(255)
+  nomeFantasia      String?   @map("nome_fantasia") @db.VarChar(255)
+  cnpj              String    @db.VarChar(18)
+  inscricaoEstadual String?   @map("inscricao_estadual") @db.VarChar(20)
+  inscricaoMunicipal String?  @map("inscricao_municipal") @db.VarChar(20)
+  
+  // Endereço
+  logradouro        String    @db.VarChar(255)
+  numero            String    @db.VarChar(20)
+  complemento       String?   @db.VarChar(100)
+  bairro            String    @db.VarChar(100)
+  cidade            String    @db.VarChar(100)
+  uf                String    @db.VarChar(2)
+  cep               String    @db.VarChar(9)
+  
+  // Contato
+  telefone          String?   @db.VarChar(20)
+  email             String?   @db.VarChar(255)
+  site              String?   @db.VarChar(255)
+  
+  // Regime Tributário
+  regimeTributario  String    @map("regime_tributario") @db.VarChar(50) // simples_nacional, lucro_presumido, lucro_real
+  
+  // Informações Fiscais
+  certificadoDigital String?  @map("certificado_digital") @db.Text // Base64 do certificado
+  senhaCertificado  String?   @map("senha_certificado") @db.VarChar(255) // Criptografada
+  ambienteFiscal    String    @default("homologacao") @map("ambiente_fiscal") @db.VarChar(20) // producao, homologacao
+  
+  // Logo (Base64)
+  logo              String?   @db.Text
+  
+  // Controle
+  ativo             Boolean   @default(true)
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  
+  @@map("empresas")
+  @@index([cnpj])
+  @@index([ativo])
+}
+
+// ============================================
+// PRODUTOS
+// ============================================
+
+model Produto {
+  id            String   @id @default(uuid())
+  codigoBarras  String?  @map("codigo_barras")
+  codigoInterno String?  @map("codigo_interno")
+  nome          String
+  descricao     String?
+  unidadeMedida String   @map("unidade_medida")
+  categoria     String?
+  ncm           String?
+  cest          String?
+  cfop          String?
+  ativo         Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  precos     ProdutoPreco[]
+  vendaItens VendaItem[]
+
+  @@index([codigoBarras])
+  @@index([codigoInterno])
+  @@index([nome])
+  @@map("produtos")
+}
+
+model ProdutoPreco {
+  id         String   @id @default(uuid())
+  produtoId  String   @map("produto_id")
+  precoVenda Float    @map("preco_venda")
+  precoCusto Float?   @map("preco_custo")
+  ativo      Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  produto Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  @@index([produtoId])
+  @@map("produto_precos")
+}
+
+// ============================================
+// FORMAS DE PAGAMENTO
+// ============================================
+
+model FormaPagamento {
+  id             String   @id @default(uuid())
+  nome           String
+  tipo           String // dinheiro, pix, cartao_credito, cartao_debito, boleto
+  taxaPercentual Float?   @map("taxa_percentual")
+  ativo          Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  vendaPagamentos VendaPagamento[]
+
+  @@map("formas_pagamento")
+}
+
+// ============================================
+// VENDAS
+// ============================================
+
+model Venda {
+  id            String   @id @default(uuid())
+  numeroVenda   Int      @map("numero_venda")
+  dataVenda     DateTime @default(now()) @map("data_venda")
+  valorTotal    Float    @map("valor_total")
+  valorDesconto Float?   @default(0) @map("valor_desconto")
+  valorFinal    Float    @map("valor_final")
+  status        String   @default("finalizada") // finalizada, cancelada
+  observacoes   String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  itens      VendaItem[]
+  pagamentos VendaPagamento[]
+
+  @@index([numeroVenda])
+  @@index([dataVenda])
+  @@map("vendas")
+}
+
+model VendaItem {
+  id            String   @id @default(uuid())
+  vendaId       String   @map("venda_id")
+  produtoId     String   @map("produto_id")
+  quantidade    Float
+  precoUnitario Float    @map("preco_unitario")
+  subtotal      Float
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  venda   Venda   @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+  produto Produto @relation(fields: [produtoId], references: [id])
+
+  @@index([vendaId])
+  @@index([produtoId])
+  @@map("venda_itens")
+}
+
+model VendaPagamento {
+  id               String   @id @default(uuid())
+  vendaId          String   @map("venda_id")
+  formaPagamentoId String   @map("forma_pagamento_id")
+  valor            Float
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  venda          Venda          @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+  formaPagamento FormaPagamento @relation(fields: [formaPagamentoId], references: [id])
+
+  @@index([vendaId])
+  @@index([formaPagamentoId])
+  @@map("venda_pagamentos")
+}
