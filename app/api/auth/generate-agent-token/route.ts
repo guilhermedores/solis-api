@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
+import { getPrismaClient, prismaPublic } from '@/lib/prisma'
 
 /**
  * @swagger
@@ -8,7 +9,7 @@ import jwt from 'jsonwebtoken'
  *     summary: Gera token JWT para instalação do Agente PDV
  *     description: |
  *       Endpoint administrativo para gerar tokens de instalação do agente.
- *       O token contém o tenant embutido e não pode ser alterado pelo usuário.
+ *       O token contém o empresaId e tenantId embutidos e não podem ser alterados pelo usuário.
  *       **IMPORTANTE:** Este endpoint deve ser protegido em produção.
  *     tags: [Auth]
  *     requestBody:
@@ -18,13 +19,19 @@ import jwt from 'jsonwebtoken'
  *           schema:
  *             type: object
  *             required:
+ *               - empresaId
  *               - tenantId
  *               - adminKey
  *             properties:
+ *               empresaId:
+ *                 type: string
+ *                 format: uuid
+ *                 example: 123e4567-e89b-12d3-a456-426614174000
+ *                 description: ID da empresa
  *               tenantId:
  *                 type: string
  *                 example: demo
- *                 description: ID do tenant (cliente)
+ *                 description: Subdomain/ID do tenant
  *               adminKey:
  *                 type: string
  *                 example: your-admin-secret-key
@@ -48,9 +55,15 @@ import jwt from 'jsonwebtoken'
  *                 token:
  *                   type: string
  *                   description: Token JWT para instalação
+ *                 empresaId:
+ *                   type: string
+ *                   description: ID da empresa embutido no token
  *                 tenantId:
  *                   type: string
  *                   description: ID do tenant embutido no token
+ *                 empresaNome:
+ *                   type: string
+ *                   description: Nome da empresa
  *                 expiresAt:
  *                   type: string
  *                   format: date-time
@@ -62,16 +75,18 @@ import jwt from 'jsonwebtoken'
  *         description: Chave administrativa inválida
  *       400:
  *         description: Dados inválidos
+ *       404:
+ *         description: Empresa ou tenant não encontrado
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { tenantId, adminKey, expiresInDays = 3650, agentName } = body
+    const { empresaId, tenantId, adminKey, expiresInDays = 3650, agentName } = body
 
     // Validações
-    if (!tenantId || !adminKey) {
+    if (!empresaId || !tenantId || !adminKey) {
       return NextResponse.json(
-        { error: 'tenantId e adminKey são obrigatórios' },
+        { error: 'empresaId, tenantId e adminKey são obrigatórios' },
         { status: 400 }
       )
     }
@@ -85,14 +100,55 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Gera token JWT com tenant embutido
+    // Valida se o tenant existe e está ativo
+    const tenant = await prismaPublic.tenant.findUnique({
+      where: { subdomain: tenantId }
+    })
+
+    if (!tenant) {
+      return NextResponse.json(
+        { error: 'Tenant não encontrado' },
+        { status: 404 }
+      )
+    }
+
+    if (!tenant.active) {
+      return NextResponse.json(
+        { error: 'Tenant está inativo' },
+        { status: 400 }
+      )
+    }
+
+    // Busca a empresa no schema do tenant
+    const tenantPrisma = await getPrismaClient(tenantId)
+    const empresa = await tenantPrisma.empresa.findUnique({
+      where: { id: empresaId }
+    })
+
+    if (!empresa) {
+      return NextResponse.json(
+        { error: 'Empresa não encontrada no tenant especificado' },
+        { status: 404 }
+      )
+    }
+
+    if (!empresa.ativo) {
+      return NextResponse.json(
+        { error: 'Empresa está inativa' },
+        { status: 400 }
+      )
+    }
+
+    // Gera token JWT com empresa e tenant embutidos
     const jwtSecret = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production'
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + expiresInDays)
 
     const token = jwt.sign(
       {
-        tenant: tenantId,
+        empresaId: empresa.id,
+        tenantId: tenant.id,
+        tenant: tenant.subdomain,
         type: 'agente-pdv',
         agentName: agentName || 'Agente PDV',
         iat: Math.floor(Date.now() / 1000),
@@ -107,7 +163,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       token,
-      tenantId,
+      empresaId: empresa.id,
+      tenantId: tenant.id,
+      tenant: tenant.subdomain,
+      empresaNome: empresa.nomeFantasia || empresa.razaoSocial,
+      cnpj: empresa.cnpj,
       expiresAt: expiresAt.toISOString(),
       instructions: `
 === INSTRUÇÕES DE INSTALAÇÃO ===
@@ -117,7 +177,10 @@ export async function POST(request: NextRequest) {
 
 TOKEN: ${token}
 
-3. O agente será configurado automaticamente para o tenant: ${tenantId}
+3. O agente será configurado automaticamente para:
+   - Empresa: ${empresa.nomeFantasia || empresa.razaoSocial}
+   - CNPJ: ${empresa.cnpj}
+   - Tenant: ${tenant.subdomain}
 
 IMPORTANTE:
 - O token está criptografado e não pode ser alterado manualmente

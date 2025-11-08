@@ -1,6 +1,6 @@
 /**
- * API de estatísticas do Tenant
- * GET /api/tenants/:id/stats - Retorna estatísticas do tenant
+ * API de informações do Tenant
+ * GET /api/tenants/:id/stats - Retorna informações do tenant
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -14,25 +14,34 @@ interface RouteParams {
 
 /**
  * GET /api/tenants/:id/stats
- * Retorna estatísticas do tenant (terminais, plano, etc)
+ * Retorna informações do tenant (plano, limites, etc)
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const stats = await tenantService.getTenantStats(params.id)
+    const tenant = await tenantService.getTenantById(params.id)
     
-    return NextResponse.json(stats)
-  } catch (error: any) {
-    console.error('Erro ao buscar estatísticas:', error)
-    
-    if (error.message.includes('não encontrado')) {
+    if (!tenant) {
       return NextResponse.json(
         { error: 'Tenant não encontrado' },
         { status: 404 }
       )
     }
     
+    return NextResponse.json({
+      id: tenant.id,
+      subdomain: tenant.subdomain,
+      companyName: tenant.companyName,
+      plan: tenant.plan,
+      maxTerminals: tenant.maxTerminals,
+      maxUsers: tenant.maxUsers,
+      active: tenant.active,
+      features: tenant.features,
+    })
+  } catch (error: any) {
+    console.error('Erro ao buscar informações do tenant:', error)
+    
     return NextResponse.json(
-      { error: 'Erro ao buscar estatísticas' },
+      { error: 'Erro ao buscar informações do tenant' },
       { status: 500 }
     )
   }

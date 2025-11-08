@@ -27,35 +27,13 @@ model Tenant {
   updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
   deletedAt    DateTime? @map("deleted_at")
 
-  // Relacionamentos
-  tokenVinculacoes TokenVinculacao[]
-
   @@index([subdomain, active])
   @@index([active])
   @@map("tenants")
 }
 
 // Tabela para gerenciar tokens de vinculação de agentes/terminais
-model TokenVinculacao {
-  id         String    @id @default(uuid()) @db.Uuid
-  tenantId   String    @map("tenant_id") @db.Uuid
-  token      String    @unique @db.VarChar(500)
-  nomeAgente String    @map("nome_agente") @db.VarChar(100)
-  tipo       String    @default("terminal") @db.VarChar(50) // terminal, mobile, etc
-  ativo      Boolean   @default(true)
-  validoAte  DateTime? @map("valido_ate")
-  ultimoUso  DateTime? @map("ultimo_uso")
-  createdAt  DateTime  @default(now()) @map("created_at")
-  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at")
-
-  // Relacionamentos
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  @@index([tenantId])
-  @@index([token])
-  @@index([ativo, validoAte])
-  @@map("token_vinculacoes")
-}
+// REMOVIDA - Tokens agora são JWT e não são armazenados no banco
 
 // ============================================
 // EMPRESA (Dados para Cupom Fiscal)

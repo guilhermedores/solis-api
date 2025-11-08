@@ -82,12 +82,6 @@ export class TenantService {
   async getTenantById(id: string): Promise<Tenant | null> {
     return await this.prisma.tenant.findUnique({
       where: { id },
-      include: {
-        tokenVinculacoes: {
-          where: { ativo: true },
-          orderBy: { createdAt: 'desc' },
-        },
-      },
     })
   }
 
@@ -191,66 +185,6 @@ export class TenantService {
     await this.prisma.tenant.delete({
       where: { id },
     })
-  }
-
-  /**
-   * Verificar se tenant pode adicionar mais terminais
-   */
-  async canAddTerminal(tenantId: string): Promise<boolean> {
-    const tenant = await this.getTenantById(tenantId)
-    if (!tenant || !tenant.active) {
-      return false
-    }
-
-    const activeTokens = await this.prisma.tokenVinculacao.count({
-      where: {
-        tenantId,
-        ativo: true,
-        OR: [
-          { validoAte: null },
-          { validoAte: { gte: new Date() } },
-        ],
-      },
-    })
-
-    return activeTokens < tenant.maxTerminals
-  }
-
-  /**
-   * Obter estatísticas do tenant
-   */
-  async getTenantStats(tenantId: string): Promise<{
-    totalTerminals: number
-    activeTerminals: number
-    maxTerminals: number
-    plan: string
-  }> {
-    const tenant = await this.getTenantById(tenantId)
-    if (!tenant) {
-      throw new Error('Tenant não encontrado')
-    }
-
-    const totalTerminals = await this.prisma.tokenVinculacao.count({
-      where: { tenantId },
-    })
-
-    const activeTerminals = await this.prisma.tokenVinculacao.count({
-      where: {
-        tenantId,
-        ativo: true,
-        OR: [
-          { validoAte: null },
-          { validoAte: { gte: new Date() } },
-        ],
-      },
-    })
-
-    return {
-      totalTerminals,
-      activeTerminals,
-      maxTerminals: tenant.maxTerminals,
-      plan: tenant.plan,
-    }
   }
 }
 
