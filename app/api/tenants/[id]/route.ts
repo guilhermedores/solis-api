@@ -11,9 +11,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { tenantService, UpdateTenantInput } from '@/lib/tenant-service'
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 /**
@@ -22,7 +22,8 @@ interface RouteParams {
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const tenant = await tenantService.getTenantById(params.id)
+    const { id } = await params
+    const tenant = await tenantService.getTenantById(id)
     
     if (!tenant) {
       return NextResponse.json(
@@ -47,9 +48,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
+    const { id } = await params
     const body = await request.json() as UpdateTenantInput
     
-    const tenant = await tenantService.updateTenant(params.id, body)
+    const tenant = await tenantService.updateTenant(id, body)
     
     return NextResponse.json(tenant)
   } catch (error: any) {
@@ -75,7 +77,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const tenant = await tenantService.deactivateTenant(params.id)
+    const { id } = await params
+    const tenant = await tenantService.deactivateTenant(id)
     
     return NextResponse.json({
       message: 'Tenant desativado com sucesso',

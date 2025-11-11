@@ -36,6 +36,25 @@ model Tenant {
 // REMOVIDA - Tokens agora são JWT e não são armazenados no banco
 
 // ============================================
+// USUÁRIOS (Schema: tenant_*)
+// ============================================
+
+model Usuario {
+  id           String    @id @default(uuid()) @db.Uuid
+  nome         String    @db.VarChar(255)
+  email        String    @unique @db.VarChar(255)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  role         String    @default("operator") @db.VarChar(50) // admin, manager, operator
+  ativo        Boolean   @default(true)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  @@index([email])
+  @@index([ativo])
+  @@map("users")
+}
+
+// ============================================
 // EMPRESA (Dados para Cupom Fiscal)
 // ============================================
 

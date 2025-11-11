@@ -7,9 +7,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { tenantService } from '@/lib/tenant-service'
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 /**
@@ -18,7 +18,8 @@ interface RouteParams {
  */
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
-    const tenant = await tenantService.reactivateTenant(params.id)
+    const { id } = await params
+    const tenant = await tenantService.reactivateTenant(id)
     
     return NextResponse.json({
       message: 'Tenant reativado com sucesso',

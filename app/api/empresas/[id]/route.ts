@@ -10,9 +10,9 @@ import { EmpresaService, UpdateEmpresaInput } from '@/lib/empresa-service'
 import { getTenant } from '@/lib/tenant'
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 /**
@@ -48,13 +48,15 @@ interface RouteParams {
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
+    const { id } = await params
+    
     const tenant = await getTenant()
     if (!tenant) {
       return NextResponse.json({ error: 'Tenant não identificado' }, { status: 400 })
     }
     
     const empresaService = new EmpresaService(tenant)
-    const empresa = await empresaService.getEmpresaById(params.id)
+    const empresa = await empresaService.getEmpresaById(id)
     
     if (!empresa) {
       return NextResponse.json(
@@ -155,6 +157,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
+    const { id } = await params
+    
     const tenant = await getTenant()
     if (!tenant) {
       return NextResponse.json({ error: 'Tenant não identificado' }, { status: 400 })
@@ -163,7 +167,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const empresaService = new EmpresaService(tenant)
     const body = await request.json() as UpdateEmpresaInput
     
-    const empresa = await empresaService.updateEmpresa(params.id, body)
+    const empresa = await empresaService.updateEmpresa(id, body)
     
     return NextResponse.json(empresa)
   } catch (error: any) {
@@ -227,13 +231,15 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
+    const { id } = await params
+    
     const tenant = await getTenant()
     if (!tenant) {
       return NextResponse.json({ error: 'Tenant não identificado' }, { status: 400 })
     }
     
     const empresaService = new EmpresaService(tenant)
-    await empresaService.deactivateEmpresa(params.id)
+    await empresaService.deactivateEmpresa(id)
     
     return NextResponse.json({
       message: 'Empresa desativada com sucesso',

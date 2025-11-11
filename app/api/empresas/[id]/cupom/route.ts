@@ -8,9 +8,9 @@ import { EmpresaService } from '@/lib/empresa-service'
 import { getTenant } from '@/lib/tenant'
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 /**
@@ -88,13 +88,15 @@ interface RouteParams {
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
+    const { id } = await params
+    
     const tenant = await getTenant()
     if (!tenant) {
       return NextResponse.json({ error: 'Tenant não identificado' }, { status: 400 })
     }
     
     const empresaService = new EmpresaService(tenant)
-    const empresa = await empresaService.getEmpresaForCupom(params.id)
+    const empresa = await empresaService.getEmpresaForCupom(id)
     
     if (!empresa) {
       return NextResponse.json(

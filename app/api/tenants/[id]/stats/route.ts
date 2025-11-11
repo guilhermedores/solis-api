@@ -7,9 +7,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { tenantService } from '@/lib/tenant-service'
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 /**
@@ -18,7 +18,8 @@ interface RouteParams {
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const tenant = await tenantService.getTenantById(params.id)
+    const { id } = await params
+    const tenant = await tenantService.getTenantById(id)
     
     if (!tenant) {
       return NextResponse.json(

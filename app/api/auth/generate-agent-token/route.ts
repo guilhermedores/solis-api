@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import jwt from 'jsonwebtoken'
-import { getPrismaClient, prismaPublic } from '@/lib/prisma'
+import { prismaPublic } from '@/lib/prisma'
+import { AuthService } from '@/lib/auth-service'
 
 /**
  * @swagger
@@ -119,63 +119,56 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Busca a empresa no schema do tenant
-    const tenantPrisma = await getPrismaClient(tenantId)
-    const empresa = await tenantPrisma.empresa.findUnique({
-      where: { id: empresaId }
-    })
+    // Gera token de agente usando AuthService
+    const tokenData = await AuthService.generateAgentToken(
+      empresaId,
+      tenant.id,
+      expiresInDays,
+      agentName
+    )
 
-    if (!empresa) {
+    if (!tokenData) {
       return NextResponse.json(
-        { error: 'Empresa não encontrada no tenant especificado' },
-        { status: 404 }
-      )
-    }
-
-    if (!empresa.ativo) {
-      return NextResponse.json(
-        { error: 'Empresa está inativa' },
+        { error: 'Erro ao gerar token. Verifique se a empresa existe e está ativa.' },
         { status: 400 }
       )
     }
 
-    // Gera token JWT com empresa e tenant embutidos
-    const jwtSecret = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production'
-    const expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + expiresInDays)
-
-    const token = jwt.sign(
-      {
-        empresaId: empresa.id,
-        tenantId: tenant.id,
-        tenant: tenant.subdomain,
-        type: 'agente-pdv',
-        agentName: agentName || 'Agente PDV',
-        iat: Math.floor(Date.now() / 1000),
-      },
-      jwtSecret,
-      {
-        expiresIn: `${expiresInDays}d`,
-        issuer: 'solis-api',
-        audience: 'solis-agente',
+    // Busca dados da empresa para exibir nas instruções
+    const { getPrismaClient } = await import('@/lib/prisma')
+    const tenantPrisma = await getPrismaClient(tenantId)
+    const empresa = await tenantPrisma.empresa.findUnique({
+      where: { id: empresaId },
+      select: {
+        id: true,
+        razaoSocial: true,
+        nomeFantasia: true,
+        cnpj: true
       }
-    )
+    })
+
+    if (!empresa) {
+      return NextResponse.json(
+        { error: 'Empresa não encontrada' },
+        { status: 404 }
+      )
+    }
 
     return NextResponse.json({
-      token,
+      token: tokenData.token,
       empresaId: empresa.id,
       tenantId: tenant.id,
       tenant: tenant.subdomain,
       empresaNome: empresa.nomeFantasia || empresa.razaoSocial,
       cnpj: empresa.cnpj,
-      expiresAt: expiresAt.toISOString(),
+      expiresAt: tokenData.expiresAt.toISOString(),
       instructions: `
 === INSTRUÇÕES DE INSTALAÇÃO ===
 
 1. Execute o instalador do Agente PDV como Administrador
 2. Quando solicitado, informe o token abaixo:
 
-TOKEN: ${token}
+TOKEN: ${tokenData.token}
 
 3. O agente será configurado automaticamente para:
    - Empresa: ${empresa.nomeFantasia || empresa.razaoSocial}
@@ -185,7 +178,7 @@ TOKEN: ${token}
 IMPORTANTE:
 - O token está criptografado e não pode ser alterado manualmente
 - Qualquer tentativa de modificação invalidará a autenticação
-- O token expira em ${expiresInDays} dias (${expiresAt.toISOString()})
+- O token expira em ${expiresInDays} dias (${tokenData.expiresAt.toISOString()})
 - Guarde este token em local seguro para futuras instalações
       `.trim()
     })
