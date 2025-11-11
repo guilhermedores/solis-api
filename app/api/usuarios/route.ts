@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { UserService, CreateUsuarioInput } from '@/lib/user-service'
+import { UsuarioService, CreateUsuarioInput } from '@/lib/usuario-service'
 import { getTenant } from '@/lib/tenant'
 import { requireManager } from '@/lib/auth-middleware'
 
@@ -71,8 +71,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Tenant não identificado' }, { status: 400 })
     }
 
-    const userService = new UserService(tenant)
-    const usuarios = await userService.listUsuarios()
+    const usuarioService = new UsuarioService(tenant)
+    const usuarios = await usuarioService.listUsuarios()
 
     return NextResponse.json(usuarios)
   } catch (error) {
@@ -203,8 +203,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const userService = new UserService(tenant)
-    const usuario = await userService.createUsuario(body)
+    const usuarioService = new UsuarioService(tenant)
+    const usuario = await usuarioService.createUsuario(body)
 
     return NextResponse.json(usuario, { status: 201 })
   } catch (error: any) {

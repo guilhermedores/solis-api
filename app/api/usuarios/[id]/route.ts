@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { UserService, UpdateUsuarioInput } from '@/lib/user-service'
+import { UsuarioService, UpdateUsuarioInput } from '@/lib/usuario-service'
 import { getTenant } from '@/lib/tenant'
 import { requireManager, requireAuth } from '@/lib/auth-middleware'
 
@@ -65,8 +65,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Tenant não identificado' }, { status: 400 })
     }
 
-    const userService = new UserService(tenant)
-    const usuario = await userService.getUsuarioById(id)
+    const usuarioService = new UsuarioService(tenant)
+    const usuario = await usuarioService.getUsuarioById(id)
 
     if (!usuario) {
       return NextResponse.json(
@@ -207,8 +207,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    const userService = new UserService(tenant)
-    const usuario = await userService.updateUsuario(id, body)
+    const usuarioService = new UsuarioService(tenant)
+    const usuario = await usuarioService.updateUsuario(id, body)
 
     return NextResponse.json(usuario)
   } catch (error: any) {
@@ -292,8 +292,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    const userService = new UserService(tenant)
-    const usuario = await userService.deactivateUsuario(id)
+    const usuarioService = new UsuarioService(tenant)
+    const usuario = await usuarioService.deactivateUsuario(id)
 
     return NextResponse.json({
       message: 'Usuário desativado com sucesso',

@@ -20,7 +20,7 @@ export interface UpdateUsuarioInput {
   ativo?: boolean
 }
 
-export class UserService {
+export class UsuarioService {
   private prismaPromise: Promise<ReturnType<typeof getPrismaClient> extends Promise<infer T> ? T : never>
   private tenant: string
 

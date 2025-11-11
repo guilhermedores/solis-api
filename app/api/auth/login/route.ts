@@ -10,7 +10,20 @@ interface LoginRequest {
   email: string
   password: string
   tenant: string
-  empresaId: string
+}
+
+/**
+ * Handler para requisições OPTIONS (preflight CORS)
+ */
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-tenant',
+    },
+  })
 }
 
 /**
@@ -31,7 +44,6 @@ interface LoginRequest {
  *               - email
  *               - password
  *               - tenant
- *               - empresaId
  *             properties:
  *               email:
  *                 type: string
@@ -45,10 +57,6 @@ interface LoginRequest {
  *                 type: string
  *                 example: "demo"
  *                 description: Subdomain do tenant
- *               empresaId:
- *                 type: string
- *                 format: uuid
- *                 example: "07a37226-fb23-486b-a851-739f2ef136eb"
  *     responses:
  *       200:
  *         description: Login realizado com sucesso
@@ -90,11 +98,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json() as LoginRequest
 
     // Validação dos campos obrigatórios
-    if (!body.email || !body.password || !body.tenant || !body.empresaId) {
+    if (!body.email || !body.password || !body.tenant) {
       return NextResponse.json(
         { 
           success: false,
-          error: 'Email, senha, tenant e empresaId são obrigatórios' 
+          error: 'Email, senha e tenant são obrigatórios' 
         },
         { status: 400 }
       )
@@ -116,8 +124,7 @@ export async function POST(request: NextRequest) {
     const result = await AuthService.login(
       body.email,
       body.password,
-      body.tenant,
-      body.empresaId
+      body.tenant
     )
 
     if (!result.success) {

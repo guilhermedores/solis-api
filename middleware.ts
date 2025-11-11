@@ -1,8 +1,21 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-// Middleware para extrair tenant do subdomínio
+// Middleware para extrair tenant do subdomínio e configurar CORS
 export function middleware(request: NextRequest) {
+  // Tratar requisições OPTIONS (CORS preflight)
+  if (request.method === 'OPTIONS') {
+    return new NextResponse(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-tenant, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Date, X-Api-Version',
+        'Access-Control-Max-Age': '86400',
+      },
+    })
+  }
+
   // Pegar o hostname da request
   const hostname = request.headers.get('host') || ''
   
@@ -31,8 +44,15 @@ export function middleware(request: NextRequest) {
     }
   }
   
-  // Criar response com header do tenant
+  // Criar response com header do tenant e CORS
   const response = NextResponse.next()
+  
+  // Headers CORS
+  response.headers.set('Access-Control-Allow-Origin', '*')
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-tenant, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Date, X-Api-Version')
+  
+  // Header do tenant
   response.headers.set('x-tenant', tenant)
   
   // Também adicionar o tenant nos cookies para facilitar acesso client-side

@@ -7,7 +7,6 @@ import { getPrismaClient, prismaPublic } from './prisma'
 
 export interface TokenPayload {
   userId: string
-  empresaId: string
   tenantId: string
   tenant: string
   role: string
@@ -27,13 +26,6 @@ export interface ValidateTokenResult {
     nome: string
     email: string
     role: string
-    ativo: boolean
-  }
-  empresa?: {
-    id: string
-    razaoSocial: string
-    nomeFantasia: string | null
-    cnpj: string
     ativo: boolean
   }
   tenant?: {
@@ -100,26 +92,6 @@ export class AuthService {
         }
       }
 
-      // Busca a empresa
-      const empresa = await tenantPrisma.empresa.findUnique({
-        where: { id: decoded.empresaId }
-      })
-
-      if (!empresa) {
-        return {
-          valid: false,
-          error: 'Empresa não encontrada'
-        }
-      }
-
-      // Valida se a empresa está ativa
-      if (!empresa.ativo) {
-        return {
-          valid: false,
-          error: 'Empresa está inativa'
-        }
-      }
-
       return {
         valid: true,
         payload: decoded,
@@ -129,13 +101,6 @@ export class AuthService {
           email: usuario.email,
           role: usuario.role,
           ativo: usuario.ativo
-        },
-        empresa: {
-          id: empresa.id,
-          razaoSocial: empresa.razaoSocial,
-          nomeFantasia: empresa.nomeFantasia,
-          cnpj: empresa.cnpj,
-          ativo: empresa.ativo
         },
         tenant: {
           id: tenant.id,
@@ -184,7 +149,6 @@ export class AuthService {
    */
   static async generateToken(
     userId: string,
-    empresaId: string,
     tenantId: string,
     expiresInDays: number = 30
   ): Promise<{ token: string; expiresAt: Date } | null> {
@@ -210,15 +174,6 @@ export class AuthService {
         return null
       }
 
-      // Busca a empresa
-      const empresa = await tenantPrisma.empresa.findUnique({
-        where: { id: empresaId }
-      })
-
-      if (!empresa || !empresa.ativo) {
-        return null
-      }
-
       const jwtSecret = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production'
       const expiresAt = new Date()
       expiresAt.setDate(expiresAt.getDate() + expiresInDays)
@@ -226,7 +181,6 @@ export class AuthService {
       const token = jwt.sign(
         {
           userId: usuario.id,
-          empresaId: empresa.id,
           tenantId: tenant.id,
           tenant: tenant.subdomain,
           role: usuario.role,
@@ -267,13 +221,15 @@ export class AuthService {
         return null
       }
 
-      // Busca a empresa no schema do tenant
+      // Valida a empresa no schema do tenant
+      const { getPrismaClient } = await import('@/lib/prisma')
       const tenantPrisma = await getPrismaClient(tenant.subdomain)
+      
       const empresa = await tenantPrisma.empresa.findUnique({
         where: { id: empresaId }
       })
 
-      if (!empresa || !empresa.ativo) {
+      if (!empresa) {
         return null
       }
 
@@ -287,7 +243,6 @@ export class AuthService {
           empresaId: empresa.id,
           tenantId: tenant.id,
           tenant: tenant.subdomain,
-          role: 'agent',
           type: 'agent',
           agentName: agentName || 'Agente PDV',
           iat: Math.floor(Date.now() / 1000),
@@ -313,8 +268,7 @@ export class AuthService {
   static async login(
     email: string,
     password: string,
-    tenantSubdomain: string,
-    empresaId: string
+    tenantSubdomain: string
   ): Promise<{ success: boolean; token?: string; expiresAt?: Date; error?: string; usuario?: any }> {
     try {
       // Busca o tenant
@@ -361,22 +315,9 @@ export class AuthService {
         }
       }
 
-      // Verifica se a empresa existe e está ativa
-      const empresa = await tenantPrisma.empresa.findUnique({
-        where: { id: empresaId }
-      })
-
-      if (!empresa || !empresa.ativo) {
-        return {
-          success: false,
-          error: 'Empresa não encontrada ou inativa'
-        }
-      }
-
       // Gera o token
       const tokenData = await AuthService.generateToken(
         usuario.id,
-        empresaId,
         tenant.id,
         30 // 30 dias de validade
       )

@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { UserService } from '@/lib/user-service'
+import { UsuarioService } from '@/lib/usuario-service'
 import { getTenant } from '@/lib/tenant'
 import { requireManager } from '@/lib/auth-middleware'
 
@@ -61,8 +61,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Tenant não identificado' }, { status: 400 })
     }
 
-    const userService = new UserService(tenant)
-    const usuario = await userService.reactivateUsuario(id)
+    const usuarioService = new UsuarioService(tenant)
+    const usuario = await usuarioService.reactivateUsuario(id)
 
     return NextResponse.json({
       message: 'Usuário reativado com sucesso',

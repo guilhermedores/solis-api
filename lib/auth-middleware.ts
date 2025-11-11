@@ -8,7 +8,6 @@ import { AuthService, ValidateTokenResult } from './auth-service'
 
 export interface AuthenticatedContext {
   userId: string
-  empresaId: string
   tenantId: string
   tenant: string
   role: string
@@ -17,11 +16,6 @@ export interface AuthenticatedContext {
     nome: string
     email: string
     role: string
-  }
-  empresa: {
-    id: string
-    razaoSocial: string
-    cnpj: string
   }
 }
 
@@ -58,22 +52,16 @@ export async function validateAuth(request: NextRequest): Promise<AuthenticatedC
 
   const validation = await AuthService.validateToken(token)
 
-  if (!validation.valid || !validation.payload || !validation.usuario || !validation.empresa) {
+  if (!validation.valid || !validation.payload || !validation.usuario) {
     return null
   }
 
   return {
     userId: validation.payload.userId,
-    empresaId: validation.payload.empresaId,
     tenantId: validation.payload.tenantId,
     tenant: validation.payload.tenant,
     role: validation.payload.role,
-    usuario: validation.usuario,
-    empresa: {
-      id: validation.empresa.id,
-      razaoSocial: validation.empresa.razaoSocial,
-      cnpj: validation.empresa.cnpj
-    }
+    usuario: validation.usuario
   }
 }
 
