@@ -1,0 +1,6 @@
+@SolisApi_HostAddress = http://localhost:5287
+
+GET {{SolisApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
