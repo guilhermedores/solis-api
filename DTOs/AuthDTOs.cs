@@ -28,40 +28,40 @@ public class LoginRequest
 public class LoginResponse
 {
     public string Token { get; set; } = string.Empty;
-    public UsuarioResponse Usuario { get; set; } = null!;
+    public UserResponse User { get; set; } = null!;
 }
 
 /// <summary>
-/// DTO de resposta do Usuario (sem senha)
+/// DTO de resposta do User (sem senha)
 /// </summary>
-public class UsuarioResponse
+public class UserResponse
 {
     public Guid Id { get; set; }
-    public string Nome { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
-    public bool Ativo { get; set; }
+    public bool Active { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
 
 /// <summary>
-/// DTO para criar Usuario
+/// DTO para criar User
 /// </summary>
-public class CreateUsuarioRequest
+public class CreateUserRequest
 {
-    public string Nome { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
     public string Role { get; set; } = "operator"; // admin, manager, operator
 }
 
 /// <summary>
-/// DTO para atualizar Usuario
+/// DTO para atualizar User
 /// </summary>
-public class UpdateUsuarioRequest
+public class UpdateUserRequest
 {
-    public string? Nome { get; set; }
+    public string? Name { get; set; }
     public string? Email { get; set; }
     public string? Password { get; set; }
     public string? Role { get; set; }

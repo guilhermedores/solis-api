@@ -9,13 +9,13 @@ namespace SolisApi.Controllers;
 /// Controller de gerenciamento de usuários
 /// </summary>
 [ApiController]
-[Route("api/usuarios")]
+[Route("api/users")]
 [RequireAuth]
-public class UsuariosController : ControllerBase
+public class UsersController : ControllerBase
 {
     private readonly UserService _userService;
 
-    public UsuariosController(UserService userService)
+    public UsersController(UserService userService)
     {
         _userService = userService;
     }
@@ -25,7 +25,7 @@ public class UsuariosController : ControllerBase
     /// </summary>
     [HttpGet]
     [RequireManager]
-    public async Task<IActionResult> ListUsuarios()
+    public async Task<IActionResult> ListUsers()
     {
         var tenant = User.FindFirst("tenant")?.Value;
 
@@ -34,15 +34,15 @@ public class UsuariosController : ControllerBase
             return Unauthorized(new ErrorResponse { Error = "Tenant não identificado" });
         }
 
-        var usuarios = await _userService.ListUsuariosAsync(tenant);
-        return Ok(usuarios);
+        var users = await _userService.ListUsuariosAsync(tenant);
+        return Ok(users);
     }
 
     /// <summary>
     /// Buscar usuário por ID
     /// </summary>
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetUsuario(Guid id)
+    public async Task<IActionResult> GetUser(Guid id)
     {
         var tenant = User.FindFirst("tenant")?.Value;
         var userRole = User.FindFirst("role")?.Value;
@@ -59,14 +59,14 @@ public class UsuariosController : ControllerBase
             return Forbid();
         }
 
-        var usuario = await _userService.GetUsuarioByIdAsync(tenant, id);
+        var user = await _userService.GetUsuarioByIdAsync(tenant, id);
 
-        if (usuario == null)
+        if (user == null)
         {
             return NotFound(new ErrorResponse { Error = "Usuário não encontrado" });
         }
 
-        return Ok(usuario);
+        return Ok(user);
     }
 
     /// <summary>
@@ -74,7 +74,7 @@ public class UsuariosController : ControllerBase
     /// </summary>
     [HttpPost]
     [RequireManager]
-    public async Task<IActionResult> CreateUsuario([FromBody] CreateUsuarioRequest request)
+    public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
     {
         var tenant = User.FindFirst("tenant")?.Value;
 
@@ -83,28 +83,28 @@ public class UsuariosController : ControllerBase
             return Unauthorized(new ErrorResponse { Error = "Tenant não identificado" });
         }
 
-        if (string.IsNullOrWhiteSpace(request.Nome) ||
+        if (string.IsNullOrWhiteSpace(request.Name) ||
             string.IsNullOrWhiteSpace(request.Email) ||
             string.IsNullOrWhiteSpace(request.Password))
         {
             return BadRequest(new ErrorResponse { Error = "Nome, email e senha são obrigatórios" });
         }
 
-        var usuario = await _userService.CreateUsuarioAsync(tenant, request);
+        var user = await _userService.CreateUsuarioAsync(tenant, request);
 
-        if (usuario == null)
+        if (user == null)
         {
             return BadRequest(new ErrorResponse { Error = "Email já cadastrado" });
         }
 
-        return CreatedAtAction(nameof(GetUsuario), new { id = usuario.Id }, usuario);
+        return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
     }
 
     /// <summary>
     /// Atualizar usuário existente
     /// </summary>
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateUsuario(Guid id, [FromBody] UpdateUsuarioRequest request)
+    public async Task<IActionResult> UpdateUser(Guid id, [FromBody] UpdateUserRequest request)
     {
         var tenant = User.FindFirst("tenant")?.Value;
         var userRole = User.FindFirst("role")?.Value;
@@ -129,14 +129,14 @@ public class UsuariosController : ControllerBase
             }
         }
 
-        var usuario = await _userService.UpdateUsuarioAsync(tenant, id, request);
+        var user = await _userService.UpdateUsuarioAsync(tenant, id, request);
 
-        if (usuario == null)
+        if (user == null)
         {
             return NotFound(new ErrorResponse { Error = "Usuário não encontrado ou email já cadastrado" });
         }
 
-        return Ok(usuario);
+        return Ok(user);
     }
 
     /// <summary>
@@ -144,7 +144,7 @@ public class UsuariosController : ControllerBase
     /// </summary>
     [HttpDelete("{id}")]
     [RequireManager]
-    public async Task<IActionResult> DeleteUsuario(Guid id)
+    public async Task<IActionResult> DeleteUser(Guid id)
     {
         var tenant = User.FindFirst("tenant")?.Value;
 
@@ -168,7 +168,7 @@ public class UsuariosController : ControllerBase
     /// </summary>
     [HttpPost("{id}/reactivate")]
     [RequireManager]
-    public async Task<IActionResult> ReactivateUsuario(Guid id)
+    public async Task<IActionResult> ReactivateUser(Guid id)
     {
         var tenant = User.FindFirst("tenant")?.Value;
 

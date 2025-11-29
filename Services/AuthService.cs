@@ -148,27 +148,27 @@ public class AuthService
         using var tenantContext = _tenantDbContextFactory.CreateDbContext(tenantSubdomain);
 
         // Buscar usuário por email
-        var usuario = await tenantContext.Usuarios
-            .FirstOrDefaultAsync(u => u.Email.ToLower() == request.Email.ToLower() && u.Ativo);
+        var user = await tenantContext.Users
+            .FirstOrDefaultAsync(u => u.Email.ToLower() == request.Email.ToLower() && u.Active);
 
-        if (usuario == null)
+        if (user == null)
         {
             _logger.LogWarning("Usuário {Email} não encontrado ou inativo no tenant {Tenant}", request.Email, tenantSubdomain);
             return null;
         }
 
         // Verificar senha
-        if (!BCrypt.Net.BCrypt.Verify(request.Password, usuario.PasswordHash))
+        if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
         {
             _logger.LogWarning("Senha inválida para usuário {Email} no tenant {Tenant}", request.Email, tenantSubdomain);
             return null;
         }
 
         // Buscar primeira empresa ativa (default)
-        var empresa = await tenantContext.Empresas
-            .FirstOrDefaultAsync(e => e.Ativo);
+        var company = await tenantContext.Companies
+            .FirstOrDefaultAsync(e => e.Active);
 
-        if (empresa == null)
+        if (company == null)
         {
             _logger.LogWarning("Nenhuma empresa ativa encontrada no tenant {Tenant}", tenantSubdomain);
             return null;
@@ -177,31 +177,31 @@ public class AuthService
         // Gerar token
         var payload = new TokenPayload
         {
-            UserId = usuario.Id,
-            EmpresaId = empresa.Id,
+            UserId = user.Id,
+            EmpresaId = company.Id,
             TenantId = tenant.Id,
             Tenant = tenant.Subdomain,
-            Role = usuario.Role,
+            Role = user.Role,
             Type = "user"
         };
 
         var token = GenerateToken(payload);
 
         _logger.LogInformation("Login bem-sucedido para usuário {UserId} ({Email}) no tenant {Tenant}", 
-            usuario.Id, usuario.Email, tenantSubdomain);
+            user.Id, user.Email, tenantSubdomain);
 
         return new LoginResponse
         {
             Token = token,
-            Usuario = new UsuarioResponse
+            User = new UserResponse
             {
-                Id = usuario.Id,
-                Nome = usuario.Nome,
-                Email = usuario.Email,
-                Role = usuario.Role,
-                Ativo = usuario.Ativo,
-                CreatedAt = usuario.CreatedAt,
-                UpdatedAt = usuario.UpdatedAt
+                Id = user.Id,
+                Name = user.Name,
+                Email = user.Email,
+                Role = user.Role,
+                Active = user.Active,
+                CreatedAt = user.CreatedAt,
+                UpdatedAt = user.UpdatedAt
             }
         };
     }

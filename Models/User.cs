@@ -4,20 +4,17 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace SolisApi.Models;
 
 /// <summary>
-/// Model Usuario - armazenado nos schemas dos tenants (tenant_*)
-/// Representa usuários do sistema em cada tenant
+/// Model User - stored in tenant schemas (tenant_*)
+/// Represents system users in each tenant
 /// </summary>
 [Table("users")]
-public class Usuario
+public class User : Entity
 {
-    [Key]
-    [Column("id")]
-    public Guid Id { get; set; } = Guid.NewGuid();
 
     [Required]
     [MaxLength(255)]
     [Column("name")]
-    public string Nome { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
 
     [Required]
     [MaxLength(255)]
@@ -34,13 +31,7 @@ public class Usuario
     public string Role { get; set; } = "operator"; // admin, manager, operator
 
     [Column("active")]
-    public bool Ativo { get; set; } = true;
-
-    [Column("created_at")]
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-    [Column("updated_at")]
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public bool Active { get; set; } = true;
 
     // Notmapped - usado apenas para contexto de autenticação
     [NotMapped]

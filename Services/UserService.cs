@@ -33,21 +33,21 @@ public class UserService
     /// <summary>
     /// Listar todos os usuários do tenant
     /// </summary>
-    public async Task<List<UsuarioResponse>> ListUsuariosAsync(string tenantSubdomain)
+    public async Task<List<UserResponse>> ListUsuariosAsync(string tenantSubdomain)
     {
         using var tenantContext = CreateTenantContext(tenantSubdomain);
 
-        var usuarios = await tenantContext.Usuarios
-            .OrderBy(u => u.Nome)
+        var users = await tenantContext.Users
+            .OrderBy(u => u.Name)
             .ToListAsync();
 
-        return usuarios.Select(u => new UsuarioResponse
+        return users.Select(u => new UserResponse
         {
             Id = u.Id,
-            Nome = u.Nome,
+            Name = u.Name,
             Email = u.Email,
             Role = u.Role,
-            Ativo = u.Ativo,
+            Active = u.Active,
             CreatedAt = u.CreatedAt,
             UpdatedAt = u.UpdatedAt
         }).ToList();
@@ -56,38 +56,38 @@ public class UserService
     /// <summary>
     /// Buscar usuário por ID
     /// </summary>
-    public async Task<UsuarioResponse?> GetUsuarioByIdAsync(string tenantSubdomain, Guid id)
+    public async Task<UserResponse?> GetUsuarioByIdAsync(string tenantSubdomain, Guid id)
     {
         using var tenantContext = CreateTenantContext(tenantSubdomain);
 
-        var usuario = await tenantContext.Usuarios.FindAsync(id);
+        var user = await tenantContext.Users.FindAsync(id);
 
-        if (usuario == null)
+        if (user == null)
         {
             return null;
         }
 
-        return new UsuarioResponse
+        return new UserResponse
         {
-            Id = usuario.Id,
-            Nome = usuario.Nome,
-            Email = usuario.Email,
-            Role = usuario.Role,
-            Ativo = usuario.Ativo,
-            CreatedAt = usuario.CreatedAt,
-            UpdatedAt = usuario.UpdatedAt
+            Id = user.Id,
+            Name = user.Name,
+            Email = user.Email,
+            Role = user.Role,
+            Active = user.Active,
+            CreatedAt = user.CreatedAt,
+            UpdatedAt = user.UpdatedAt
         };
     }
 
     /// <summary>
     /// Criar novo usuário
     /// </summary>
-    public async Task<UsuarioResponse?> CreateUsuarioAsync(string tenantSubdomain, CreateUsuarioRequest request)
+    public async Task<UserResponse?> CreateUsuarioAsync(string tenantSubdomain, CreateUserRequest request)
     {
         using var tenantContext = CreateTenantContext(tenantSubdomain);
 
         // Verificar se email já existe
-        var emailExists = await tenantContext.Usuarios
+        var emailExists = await tenantContext.Users
             .AnyAsync(u => u.Email.ToLower() == request.Email.ToLower());
 
         if (emailExists)
@@ -100,59 +100,59 @@ public class UserService
         // Hash da senha
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password, 10);
 
-        var usuario = new Usuario
+        var user = new User
         {
-            Nome = request.Nome,
+            Name = request.Name,
             Email = request.Email.ToLower(),
             PasswordHash = passwordHash,
             Role = request.Role,
-            Ativo = true,
+            Active = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
-        tenantContext.Usuarios.Add(usuario);
+        tenantContext.Users.Add(user);
         await tenantContext.SaveChangesAsync();
 
         _logger.LogInformation("Usuário criado: {UserId} ({Email}) no tenant {Tenant}", 
-            usuario.Id, usuario.Email, tenantSubdomain);
+            user.Id, user.Email, tenantSubdomain);
 
-        return new UsuarioResponse
+        return new UserResponse
         {
-            Id = usuario.Id,
-            Nome = usuario.Nome,
-            Email = usuario.Email,
-            Role = usuario.Role,
-            Ativo = usuario.Ativo,
-            CreatedAt = usuario.CreatedAt,
-            UpdatedAt = usuario.UpdatedAt
+            Id = user.Id,
+            Name = user.Name,
+            Email = user.Email,
+            Role = user.Role,
+            Active = user.Active,
+            CreatedAt = user.CreatedAt,
+            UpdatedAt = user.UpdatedAt
         };
     }
 
     /// <summary>
     /// Atualizar usuário existente
     /// </summary>
-    public async Task<UsuarioResponse?> UpdateUsuarioAsync(string tenantSubdomain, Guid id, UpdateUsuarioRequest request)
+    public async Task<UserResponse?> UpdateUsuarioAsync(string tenantSubdomain, Guid id, UpdateUserRequest request)
     {
         using var tenantContext = CreateTenantContext(tenantSubdomain);
 
-        var usuario = await tenantContext.Usuarios.FindAsync(id);
+        var user = await tenantContext.Users.FindAsync(id);
 
-        if (usuario == null)
+        if (user == null)
         {
             return null;
         }
 
         // Atualizar campos se fornecidos
-        if (!string.IsNullOrWhiteSpace(request.Nome))
+        if (!string.IsNullOrWhiteSpace(request.Name))
         {
-            usuario.Nome = request.Nome;
+            user.Name = request.Name;
         }
 
         if (!string.IsNullOrWhiteSpace(request.Email))
         {
             // Verificar se novo email já existe em outro usuário
-            var emailExists = await tenantContext.Usuarios
+            var emailExists = await tenantContext.Users
                 .AnyAsync(u => u.Email.ToLower() == request.Email.ToLower() && u.Id != id);
 
             if (emailExists)
@@ -160,34 +160,34 @@ public class UserService
                 return null; // Email já cadastrado
             }
 
-            usuario.Email = request.Email.ToLower();
+            user.Email = request.Email.ToLower();
         }
 
         if (!string.IsNullOrWhiteSpace(request.Password))
         {
-            usuario.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password, 10);
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password, 10);
         }
 
         if (!string.IsNullOrWhiteSpace(request.Role))
         {
-            usuario.Role = request.Role;
+            user.Role = request.Role;
         }
 
-        usuario.UpdatedAt = DateTime.UtcNow;
+        user.UpdatedAt = DateTime.UtcNow;
 
         await tenantContext.SaveChangesAsync();
 
         _logger.LogInformation("Usuário atualizado: {UserId} no tenant {Tenant}", id, tenantSubdomain);
 
-        return new UsuarioResponse
+        return new UserResponse
         {
-            Id = usuario.Id,
-            Nome = usuario.Nome,
-            Email = usuario.Email,
-            Role = usuario.Role,
-            Ativo = usuario.Ativo,
-            CreatedAt = usuario.CreatedAt,
-            UpdatedAt = usuario.UpdatedAt
+            Id = user.Id,
+            Name = user.Name,
+            Email = user.Email,
+            Role = user.Role,
+            Active = user.Active,
+            CreatedAt = user.CreatedAt,
+            UpdatedAt = user.UpdatedAt
         };
     }
 
@@ -198,15 +198,15 @@ public class UserService
     {
         using var tenantContext = CreateTenantContext(tenantSubdomain);
 
-        var usuario = await tenantContext.Usuarios.FindAsync(id);
+        var user = await tenantContext.Users.FindAsync(id);
 
-        if (usuario == null)
+        if (user == null)
         {
             return false;
         }
 
-        usuario.Ativo = false;
-        usuario.UpdatedAt = DateTime.UtcNow;
+        user.Active = false;
+        user.UpdatedAt = DateTime.UtcNow;
 
         await tenantContext.SaveChangesAsync();
 
@@ -222,15 +222,15 @@ public class UserService
     {
         using var tenantContext = CreateTenantContext(tenantSubdomain);
 
-        var usuario = await tenantContext.Usuarios.FindAsync(id);
+        var user = await tenantContext.Users.FindAsync(id);
 
-        if (usuario == null)
+        if (user == null)
         {
             return false;
         }
 
-        usuario.Ativo = true;
-        usuario.UpdatedAt = DateTime.UtcNow;
+        user.Active = true;
+        user.UpdatedAt = DateTime.UtcNow;
 
         await tenantContext.SaveChangesAsync();
 
@@ -244,14 +244,14 @@ public class UserService
     {
         using var tenantContext = CreateTenantContext(tenantSubdomain);
 
-        var usuario = await tenantContext.Usuarios.FindAsync(id);
+        var user = await tenantContext.Users.FindAsync(id);
 
-        if (usuario == null)
+        if (user == null)
         {
             return false;
         }
 
-        tenantContext.Usuarios.Remove(usuario);
+        tenantContext.Users.Remove(user);
         await tenantContext.SaveChangesAsync();
 
         return true;

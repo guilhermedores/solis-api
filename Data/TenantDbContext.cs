@@ -16,8 +16,10 @@ public class TenantDbContext : DbContext
         _tenantSchema = tenantSchema;
     }
 
-    public DbSet<Usuario> Usuarios { get; set; } = null!;
-    public DbSet<Empresa> Empresas { get; set; } = null!;
+    public DbSet<User> Users { get; set; } = null!;
+    public DbSet<Company> Companies { get; set; } = null!;
+    public DbSet<TaxRegime> TaxRegimes { get; set; } = null!;
+    public DbSet<SpecialTaxRegime> SpecialTaxRegimes { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -26,20 +28,69 @@ public class TenantDbContext : DbContext
         // Configurar schema dinâmico do tenant
         modelBuilder.HasDefaultSchema(_tenantSchema);
 
-        // Configurações Usuario
-        modelBuilder.Entity<Usuario>()
+        // Configurações User
+        modelBuilder.Entity<User>()
             .ToTable("users", schema: _tenantSchema);
 
-        modelBuilder.Entity<Usuario>()
+        modelBuilder.Entity<User>()
             .HasIndex(u => u.Email)
             .IsUnique();
 
-        // Configurações Empresa
-        modelBuilder.Entity<Empresa>()
+        // Configurações Company
+        modelBuilder.Entity<Company>()
             .ToTable("empresas", schema: _tenantSchema);
 
-        modelBuilder.Entity<Empresa>()
+        modelBuilder.Entity<Company>()
             .HasIndex(e => e.Cnpj)
+            .IsUnique();
+
+        // Configurar Value Objects da Company
+        modelBuilder.Entity<Company>()
+            .OwnsOne(e => e.Address, address =>
+            {
+                address.Property(a => a.ZipCode).HasColumnName("cep").IsRequired();
+                address.Property(a => a.Street).HasColumnName("logradouro").IsRequired();
+                address.Property(a => a.Number).HasColumnName("numero").IsRequired();
+                address.Property(a => a.Complement).HasColumnName("complemento");
+                address.Property(a => a.District).HasColumnName("bairro").IsRequired();
+                address.Property(a => a.City).HasColumnName("cidade").IsRequired();
+                address.Property(a => a.State).HasColumnName("uf").IsRequired();
+            });
+
+        modelBuilder.Entity<Company>()
+            .OwnsOne(e => e.Contact, contact =>
+            {
+                contact.Property(c => c.Phone).HasColumnName("telefone_fixo");
+                contact.Property(c => c.Mobile).HasColumnName("celular_whatsapp");
+                contact.Property(c => c.Email).HasColumnName("email_comercial");
+            });
+
+        modelBuilder.Entity<Company>()
+            .HasOne(e => e.TaxRegime)
+            .WithMany(r => r.Companies)
+            .HasForeignKey(e => e.TaxRegimeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Company>()
+            .HasOne(e => e.SpecialTaxRegime)
+            .WithMany(r => r.Companies)
+            .HasForeignKey(e => e.SpecialTaxRegimeId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Configurações TaxRegime
+        modelBuilder.Entity<TaxRegime>()
+            .ToTable("regimes_tributarios", schema: _tenantSchema);
+
+        modelBuilder.Entity<TaxRegime>()
+            .HasIndex(r => r.Code)
+            .IsUnique();
+
+        // Configurações SpecialTaxRegime
+        modelBuilder.Entity<SpecialTaxRegime>()
+            .ToTable("regimes_especiais_tributacao", schema: _tenantSchema);
+
+        modelBuilder.Entity<SpecialTaxRegime>()
+            .HasIndex(r => r.Code)
             .IsUnique();
     }
 }
