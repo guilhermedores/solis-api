@@ -231,7 +231,34 @@ public class DynamicCrudService
             fields.Insert(0, idField);
         }
         
-        var selectFields = string.Join(", ", fields.Select(f => f.ColumnName));
+        var selectFields = string.Join(", ", fields.Select(f => $"{entity.TableName}.{f.ColumnName}"));
+        
+        // Build JOIN clauses for relationship fields to display descriptive labels
+        var joinClauses = new List<string>();
+        var displayFields = new List<string>();
+        
+        foreach (var field in fields.Where(f => f.Relationship != null))
+        {
+            var rel = field.Relationship!;
+            var alias = $"rel_{field.Name}";
+            
+            // LEFT JOIN to related table
+            joinClauses.Add($@"
+                LEFT JOIN {schema}.{rel.RelatedEntityTableName} AS {alias} 
+                ON {entity.TableName}.{rel.ForeignKeyColumn} = {alias}.id");
+            
+            // Add display field from related table
+            displayFields.Add($"{alias}.{rel.DisplayField} AS {field.Name}_display");
+        }
+        
+        // Combine main fields with display fields
+        var allSelectFields = selectFields;
+        if (displayFields.Any())
+        {
+            allSelectFields += ", " + string.Join(", ", displayFields);
+        }
+        
+        var joinClause = string.Join(" ", joinClauses);
         
         // Build WHERE clause
         var whereConditions = new List<string>();
@@ -242,7 +269,7 @@ public class DynamicCrudService
             var searchFields = fields.Where(f => f.DataType == "string").ToList();
             if (searchFields.Any())
             {
-                var searchConditions = searchFields.Select(f => $"{f.ColumnName}::text ILIKE @SearchTerm");
+                var searchConditions = searchFields.Select(f => $"{entity.TableName}.{f.ColumnName}::text ILIKE @SearchTerm");
                 whereConditions.Add($"({string.Join(" OR ", searchConditions)})");
                 parameters.Add("SearchTerm", $"%{searchTerm}%");
             }
@@ -255,7 +282,7 @@ public class DynamicCrudService
                 var field = fields.FirstOrDefault(f => f.Name == filter.Key);
                 if (field != null)
                 {
-                    whereConditions.Add($"{field.ColumnName} = @{filter.Key}");
+                    whereConditions.Add($"{entity.TableName}.{field.ColumnName} = @{filter.Key}");
                     parameters.Add(filter.Key, filter.Value);
                 }
             }
@@ -264,25 +291,26 @@ public class DynamicCrudService
         var whereClause = whereConditions.Any() ? $"WHERE {string.Join(" AND ", whereConditions)}" : "";
         
         // Build ORDER BY
-        var orderByClause = "created_at DESC";
+        var orderByClause = $"{entity.TableName}.created_at DESC";
         if (!string.IsNullOrEmpty(orderBy))
         {
             var orderField = fields.FirstOrDefault(f => f.Name == orderBy);
             if (orderField != null)
             {
-                orderByClause = $"{orderField.ColumnName} {(ascending ? "ASC" : "DESC")}";
+                orderByClause = $"{entity.TableName}.{orderField.ColumnName} {(ascending ? "ASC" : "DESC")}";
             }
         }
         
         // Count total
-        var countSql = $"SELECT COUNT(*) FROM {schema}.{entity.TableName} {whereClause}";
+        var countSql = $"SELECT COUNT(*) FROM {schema}.{entity.TableName} {joinClause} {whereClause}";
         var totalCount = await connection.ExecuteScalarAsync<int>(countSql, parameters);
         
         // Get data
         var offset = (page - 1) * pageSize;
         var dataSql = $@"
-            SELECT {selectFields} 
+            SELECT {allSelectFields} 
             FROM {schema}.{entity.TableName} 
+            {joinClause}
             {whereClause} 
             ORDER BY {orderByClause} 
             LIMIT @PageSize OFFSET @Offset";
@@ -318,9 +346,36 @@ public class DynamicCrudService
         await connection.OpenAsync();
         
         var fields = entity.Fields.Where(f => f.ShowInDetail).ToList();
-        var selectFields = string.Join(", ", fields.Select(f => f.ColumnName));
+        var selectFields = string.Join(", ", fields.Select(f => $"{entity.TableName}.{f.ColumnName}"));
         
-        var sql = $"SELECT {selectFields} FROM {schema}.{entity.TableName} WHERE id = @Id";
+        // Build JOIN clauses for relationship fields to display descriptive labels
+        var joinClauses = new List<string>();
+        var displayFields = new List<string>();
+        
+        foreach (var field in fields.Where(f => f.Relationship != null))
+        {
+            var rel = field.Relationship!;
+            var alias = $"rel_{field.Name}";
+            
+            // LEFT JOIN to related table
+            joinClauses.Add($@"
+                LEFT JOIN {schema}.{rel.RelatedEntityTableName} AS {alias} 
+                ON {entity.TableName}.{rel.ForeignKeyColumn} = {alias}.id");
+            
+            // Add display field from related table
+            displayFields.Add($"{alias}.{rel.DisplayField} AS {field.Name}_display");
+        }
+        
+        // Combine main fields with display fields
+        var allSelectFields = selectFields;
+        if (displayFields.Any())
+        {
+            allSelectFields += ", " + string.Join(", ", displayFields);
+        }
+        
+        var joinClause = string.Join(" ", joinClauses);
+        
+        var sql = $"SELECT {allSelectFields} FROM {schema}.{entity.TableName} {joinClause} WHERE {entity.TableName}.id = @Id";
         var row = await connection.QueryFirstOrDefaultAsync(sql, new { Id = id });
         
         if (row == null)
