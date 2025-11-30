@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: solis-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: solis_pdv
+      POSTGRES_USER: solis_user
+      POSTGRES_PASSWORD: solis2024
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U solis_user -d solis_pdv"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - solis-network
+
+volumes:
+  postgres-data:
+    driver: local
+
+networks:
+  solis-network:
+    driver: bridge

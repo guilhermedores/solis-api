@@ -3,12 +3,36 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Dapper;
+using Npgsql;
 using SolisApi.Data;
 using SolisApi.DTOs;
-using SolisApi.Models;
 using BCrypt.Net;
 
 namespace SolisApi.Services;
+
+/// <summary>
+/// DTO interno para query de usuário
+/// </summary>
+internal class UserDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Password_Hash { get; set; } = string.Empty;
+    public string Role { get; set; } = string.Empty;
+    public bool Active { get; set; }
+    public DateTime Created_At { get; set; }
+    public DateTime Updated_At { get; set; }
+}
+
+/// <summary>
+/// DTO interno para query de empresa
+/// </summary>
+internal class CompanyDto
+{
+    public Guid Id { get; set; }
+}
 
 /// <summary>
 /// Serviço de autenticação - geração e validação de tokens JWT
@@ -19,21 +43,30 @@ public class AuthService
     private readonly string _jwtIssuer;
     private readonly string _jwtAudience;
     private readonly SolisDbContext _context;
-    private readonly ITenantDbContextFactory _tenantDbContextFactory;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<AuthService> _logger;
 
     public AuthService(
         IConfiguration configuration, 
         SolisDbContext context,
-        ITenantDbContextFactory tenantDbContextFactory,
         ILogger<AuthService> logger)
     {
         _jwtSecret = configuration["Jwt:Secret"] ?? throw new InvalidOperationException("JWT Secret não configurado");
         _jwtIssuer = configuration["Jwt:Issuer"] ?? "SolisApi";
         _jwtAudience = configuration["Jwt:Audience"] ?? "SolisApi";
         _context = context;
-        _tenantDbContextFactory = tenantDbContextFactory;
+        _configuration = configuration;
         _logger = logger;
+    }
+
+    private string GetConnectionString(string tenantSubdomain)
+    {
+        var baseConnectionString = _configuration.GetConnectionString("DefaultConnection");
+        var builder = new NpgsqlConnectionStringBuilder(baseConnectionString)
+        {
+            SearchPath = $"tenant_{tenantSubdomain},public"
+        };
+        return builder.ToString();
     }
 
     /// <summary>
@@ -110,14 +143,21 @@ public class AuthService
 
             var principal = tokenHandler.ValidateToken(token, validationParameters, out _);
 
+            var userId = principal.FindFirst("userId")?.Value;
+            var empresaId = principal.FindFirst("empresaId")?.Value;
+            var tenantId = principal.FindFirst("tenantId")?.Value;
+            var tenant = principal.FindFirst("tenant")?.Value;
+            var role = principal.FindFirst(ClaimTypes.Role)?.Value; // Use ClaimTypes.Role instead of "role"
+            var type = principal.FindFirst("type")?.Value;
+
             return new TokenPayload
             {
-                UserId = Guid.Parse(principal.FindFirst("userId")?.Value ?? string.Empty),
-                EmpresaId = Guid.Parse(principal.FindFirst("empresaId")?.Value ?? string.Empty),
-                TenantId = Guid.Parse(principal.FindFirst("tenantId")?.Value ?? string.Empty),
-                Tenant = principal.FindFirst("tenant")?.Value ?? string.Empty,
-                Role = principal.FindFirst("role")?.Value ?? string.Empty,
-                Type = principal.FindFirst("type")?.Value ?? string.Empty
+                UserId = Guid.Parse(userId ?? string.Empty),
+                EmpresaId = Guid.Parse(empresaId ?? string.Empty),
+                TenantId = Guid.Parse(tenantId ?? string.Empty),
+                Tenant = tenant ?? string.Empty,
+                Role = role ?? string.Empty,
+                Type = type ?? string.Empty
             };
         }
         catch (Exception ex)
@@ -144,12 +184,16 @@ public class AuthService
             return null;
         }
 
-        // Usar factory para criar DbContext do tenant
-        using var tenantContext = _tenantDbContextFactory.CreateDbContext(tenantSubdomain);
+        // Conectar ao schema do tenant usando Dapper
+        using var connection = new NpgsqlConnection(GetConnectionString(tenantSubdomain));
+        await connection.OpenAsync();
 
         // Buscar usuário por email
-        var user = await tenantContext.Users
-            .FirstOrDefaultAsync(u => u.Email.ToLower() == request.Email.ToLower() && u.Active);
+        var user = await connection.QueryFirstOrDefaultAsync<UserDto>(@"
+            SELECT id, name, email, password_hash, role, active, created_at, updated_at
+            FROM users
+            WHERE LOWER(email) = LOWER(@Email) AND active = true
+        ", new { request.Email });
 
         if (user == null)
         {
@@ -158,15 +202,19 @@ public class AuthService
         }
 
         // Verificar senha
-        if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+        if (!BCrypt.Net.BCrypt.Verify(request.Password, user.Password_Hash))
         {
             _logger.LogWarning("Senha inválida para usuário {Email} no tenant {Tenant}", request.Email, tenantSubdomain);
             return null;
         }
 
         // Buscar primeira empresa ativa (default)
-        var company = await tenantContext.Companies
-            .FirstOrDefaultAsync(e => e.Active);
+        var company = await connection.QueryFirstOrDefaultAsync<CompanyDto>(@"
+            SELECT id
+            FROM companies
+            WHERE active = true
+            LIMIT 1
+        ");
 
         if (company == null)
         {
@@ -200,8 +248,8 @@ public class AuthService
                 Email = user.Email,
                 Role = user.Role,
                 Active = user.Active,
-                CreatedAt = user.CreatedAt,
-                UpdatedAt = user.UpdatedAt
+                CreatedAt = user.Created_At,
+                UpdatedAt = user.Updated_At
             }
         };
     }

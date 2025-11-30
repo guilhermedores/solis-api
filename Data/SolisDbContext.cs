@@ -21,10 +21,5 @@ public class SolisDbContext : DbContext
         // Configurar schema public para Tenant
         modelBuilder.Entity<Tenant>()
             .ToTable("tenants", schema: "public");
-
-        // Configurar campo Features como jsonb
-        modelBuilder.Entity<Tenant>()
-            .Property(t => t.Features)
-            .HasColumnType("jsonb");
     }
 }

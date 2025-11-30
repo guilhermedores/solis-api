@@ -70,13 +70,9 @@ if (string.IsNullOrEmpty(jwtSecret) || jwtSecret.Length < 32)
 builder.Services.AddDbContext<SolisDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// Registrar TenantDbContextFactory
-builder.Services.AddScoped<ITenantDbContextFactory, TenantDbContextFactory>();
-
 // Registrar serviços
 builder.Services.AddScoped<AuthService>();
-builder.Services.AddScoped<UserService>();
-builder.Services.AddScoped<CompanyService>();
+builder.Services.AddScoped<DynamicCrudService>();
 
 // Health Checks - sem DbContext check para evitar problemas de scoping
 builder.Services.AddHealthChecks();

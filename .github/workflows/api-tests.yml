@@ -1,0 +1,93 @@
+name: API Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: solis_pdv
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+    
+    - name: Restore dependencies
+      run: dotnet restore
+    
+    - name: Build
+      run: dotnet build --no-restore --configuration Release
+    
+    - name: Setup Database
+      env:
+        ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=solis_pdv;Username=postgres;Password=postgres"
+      run: |
+        # Executar migrations ou scripts SQL aqui
+        echo "Database setup completed"
+    
+    - name: Start API
+      env:
+        ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=solis_pdv;Username=postgres;Password=postgres"
+        Jwt__Secret: "this-is-a-super-secret-key-for-testing-with-at-least-32-characters"
+        ASPNETCORE_ENVIRONMENT: Development
+      run: |
+        dotnet run --project SolisApi.csproj --no-build --configuration Release &
+        echo $! > api.pid
+        sleep 10
+        
+        # Wait for API to be ready
+        for i in {1..30}; do
+          if curl -s http://localhost:5287/api/health > /dev/null; then
+            echo "API is ready"
+            break
+          fi
+          echo "Waiting for API... ($i/30)"
+          sleep 2
+        done
+    
+    - name: Run API Tests (PowerShell)
+      run: |
+        pwsh ./tests/api-tests.ps1 -BaseUrl "http://localhost:5287" -TenantSubdomain "demo"
+    
+    - name: Run API Tests (Bash)
+      run: |
+        chmod +x ./tests/api-tests.sh
+        ./tests/api-tests.sh "http://localhost:5287" "demo"
+    
+    - name: Stop API
+      if: always()
+      run: |
+        if [ -f api.pid ]; then
+          kill $(cat api.pid) || true
+        fi
+    
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: |
+          logs/
+          TestResults/

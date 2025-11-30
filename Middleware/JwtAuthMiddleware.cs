@@ -34,16 +34,23 @@ public class JwtAuthMiddleware
                 // Adicionar claims ao contexto
                 var claims = new List<Claim>
                 {
+                    new(ClaimTypes.NameIdentifier, payload.UserId.ToString()),
                     new("userId", payload.UserId.ToString()),
                     new("empresaId", payload.EmpresaId.ToString()),
                     new("tenantId", payload.TenantId.ToString()),
                     new("tenant", payload.Tenant),
+                    new(ClaimTypes.Role, payload.Role),
                     new("role", payload.Role),
                     new("type", payload.Type)
                 };
 
-                var identity = new ClaimsIdentity(claims, "jwt");
+                var identity = new ClaimsIdentity(claims, "Bearer", ClaimTypes.NameIdentifier, ClaimTypes.Role);
                 context.User = new ClaimsPrincipal(identity);
+                
+                // Adicionar ao HttpContext.Items para fácil acesso
+                context.Items["TenantSubdomain"] = payload.Tenant;
+                context.Items["UserRole"] = payload.Role;
+                context.Items["UserId"] = payload.UserId;
             }
         }
 

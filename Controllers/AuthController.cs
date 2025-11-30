@@ -21,19 +21,19 @@ public class AuthController : ControllerBase
     /// <summary>
     /// Login - autenticar usuário e retornar token
     /// </summary>
-    /// <param name="tenantSubdomain">Subdomain do tenant (ex: demo, cliente1)</param>
     /// <param name="request">Credenciais de login (email e senha)</param>
     /// <returns>Token JWT e dados do usuário</returns>
     [HttpPost("login")]
-    public async Task<IActionResult> Login(
-        [FromQuery] string tenantSubdomain,
-        [FromBody] LoginRequest request)
+    public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
+        // Obter tenant do header
+        var tenantSubdomain = Request.Headers["X-Tenant-Subdomain"].FirstOrDefault();
+        
         if (string.IsNullOrWhiteSpace(tenantSubdomain))
         {
             return BadRequest(new ErrorResponse
             {
-                Error = "Subdomain do tenant é obrigatório"
+                Error = "Header X-Tenant-Subdomain é obrigatório"
             });
         }
 

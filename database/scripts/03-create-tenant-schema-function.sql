@@ -1,0 +1,294 @@
+-- =============================================
+-- Script: 03-create-tenant-schema-function.sql
+-- Description: Creates function to provision new tenant schemas
+-- Author: Solis Team
+-- Date: 2025-11-30
+-- =============================================
+
+-- Function to create a new tenant schema with all required tables
+CREATE OR REPLACE FUNCTION create_tenant_schema(p_schema_name VARCHAR)
+RETURNS VOID AS $$
+BEGIN
+    -- Create schema
+    EXECUTE format('CREATE SCHEMA IF NOT EXISTS %I', p_schema_name);
+    
+    -- Grant privileges
+    EXECUTE format('GRANT ALL ON SCHEMA %I TO solis_user', p_schema_name);
+    
+    -- Create users table
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.users (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            name VARCHAR(200) NOT NULL,
+            email VARCHAR(200) NOT NULL UNIQUE,
+            password_hash VARCHAR(500) NOT NULL,
+            role VARCHAR(50) NOT NULL DEFAULT ''operator'',
+            active BOOLEAN NOT NULL DEFAULT true,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            
+            CONSTRAINT chk_users_role CHECK (role IN (''admin'', ''manager'', ''operator''))
+        )', p_schema_name);
+    
+    -- Create indexes for users table
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_users_email ON %I.users(email) WHERE active = true', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_users_role ON %I.users(role)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_users_active ON %I.users(active)', p_schema_name);
+    
+    -- Create trigger for users updated_at
+    EXECUTE format('
+        DROP TRIGGER IF EXISTS trg_users_updated_at ON %I.users;
+        CREATE TRIGGER trg_users_updated_at
+            BEFORE UPDATE ON %I.users
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column()', p_schema_name, p_schema_name);
+    
+    -- Create tax_regimes table
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.tax_regimes (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            code VARCHAR(10) NOT NULL UNIQUE,
+            description VARCHAR(200) NOT NULL,
+            active BOOLEAN NOT NULL DEFAULT true,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )', p_schema_name);
+    
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_tax_regimes_code ON %I.tax_regimes(code)', p_schema_name);
+    
+    EXECUTE format('
+        DROP TRIGGER IF EXISTS trg_tax_regimes_updated_at ON %I.tax_regimes;
+        CREATE TRIGGER trg_tax_regimes_updated_at
+            BEFORE UPDATE ON %I.tax_regimes
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column()', p_schema_name, p_schema_name);
+    
+    -- Create special_tax_regimes table
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.special_tax_regimes (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            code VARCHAR(10) NOT NULL UNIQUE,
+            description VARCHAR(200) NOT NULL,
+            active BOOLEAN NOT NULL DEFAULT true,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )', p_schema_name);
+    
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_special_tax_regimes_code ON %I.special_tax_regimes(code)', p_schema_name);
+    
+    EXECUTE format('
+        DROP TRIGGER IF EXISTS trg_special_tax_regimes_updated_at ON %I.special_tax_regimes;
+        CREATE TRIGGER trg_special_tax_regimes_updated_at
+            BEFORE UPDATE ON %I.special_tax_regimes
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column()', p_schema_name, p_schema_name);
+    
+    -- Create companies table
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.companies (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            legal_name VARCHAR(200) NOT NULL,
+            trade_name VARCHAR(200),
+            cnpj VARCHAR(14) NOT NULL UNIQUE,
+            state_registration VARCHAR(50),
+            city_registration VARCHAR(50),
+            cnae VARCHAR(10),
+            logo_url VARCHAR(500),
+            tax_regime_id UUID NOT NULL,
+            special_tax_regime_id UUID,
+            active BOOLEAN NOT NULL DEFAULT true,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            
+            -- Address fields (owned entity)
+            address_zip_code VARCHAR(8),
+            address_street VARCHAR(200),
+            address_number VARCHAR(20),
+            address_complement VARCHAR(100),
+            address_district VARCHAR(100),
+            address_city VARCHAR(100),
+            address_state VARCHAR(2),
+            
+            -- Contact fields (owned entity)
+            contact_phone VARCHAR(20),
+            contact_mobile VARCHAR(20),
+            contact_email VARCHAR(200),
+            
+            CONSTRAINT fk_companies_tax_regime FOREIGN KEY (tax_regime_id) 
+                REFERENCES %I.tax_regimes(id) ON DELETE RESTRICT,
+            CONSTRAINT fk_companies_special_tax_regime FOREIGN KEY (special_tax_regime_id) 
+                REFERENCES %I.special_tax_regimes(id) ON DELETE RESTRICT,
+            CONSTRAINT chk_companies_cnpj_length CHECK (LENGTH(cnpj) = 14),
+            CONSTRAINT chk_companies_state_length CHECK (address_state IS NULL OR LENGTH(address_state) = 2)
+        )', p_schema_name, p_schema_name, p_schema_name);
+    
+    -- Create indexes for companies table
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_companies_cnpj ON %I.companies(cnpj)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_companies_tax_regime ON %I.companies(tax_regime_id)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_companies_active ON %I.companies(active)', p_schema_name);
+    
+    EXECUTE format('
+        DROP TRIGGER IF EXISTS trg_companies_updated_at ON %I.companies;
+        CREATE TRIGGER trg_companies_updated_at
+            BEFORE UPDATE ON %I.companies
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column()', p_schema_name, p_schema_name);
+    
+    -- Add table comments
+    EXECUTE format('COMMENT ON TABLE %I.users IS ''Users table for tenant %I''', p_schema_name, p_schema_name);
+    EXECUTE format('COMMENT ON TABLE %I.tax_regimes IS ''Tax regimes table for tenant %I''', p_schema_name, p_schema_name);
+    EXECUTE format('COMMENT ON TABLE %I.special_tax_regimes IS ''Special tax regimes table for tenant %I''', p_schema_name, p_schema_name);
+    EXECUTE format('COMMENT ON TABLE %I.companies IS ''Companies table for tenant %I''', p_schema_name, p_schema_name);
+    
+    -- Create metadata tables for dynamic CRUD
+    -- Entities table
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.entities (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            name VARCHAR(100) NOT NULL UNIQUE,
+            display_name VARCHAR(200) NOT NULL,
+            table_name VARCHAR(100) NOT NULL,
+            icon VARCHAR(50),
+            description TEXT,
+            is_active BOOLEAN NOT NULL DEFAULT true,
+            allow_create BOOLEAN NOT NULL DEFAULT true,
+            allow_read BOOLEAN NOT NULL DEFAULT true,
+            allow_update BOOLEAN NOT NULL DEFAULT true,
+            allow_delete BOOLEAN NOT NULL DEFAULT true,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )', p_schema_name);
+    
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_entities_name ON %I.entities(name)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_entities_active ON %I.entities(is_active)', p_schema_name);
+    
+    -- Entity fields table
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.entity_fields (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            entity_id UUID NOT NULL,
+            name VARCHAR(100) NOT NULL,
+            display_name VARCHAR(200) NOT NULL,
+            column_name VARCHAR(100) NOT NULL,
+            data_type VARCHAR(50) NOT NULL,
+            field_type VARCHAR(50) NOT NULL DEFAULT ''text'',
+            max_length INTEGER,
+            is_required BOOLEAN NOT NULL DEFAULT false,
+            is_unique BOOLEAN NOT NULL DEFAULT false,
+            is_readonly BOOLEAN NOT NULL DEFAULT false,
+            is_system_field BOOLEAN NOT NULL DEFAULT false,
+            show_in_list BOOLEAN NOT NULL DEFAULT true,
+            show_in_detail BOOLEAN NOT NULL DEFAULT true,
+            show_in_create BOOLEAN NOT NULL DEFAULT true,
+            show_in_update BOOLEAN NOT NULL DEFAULT true,
+            list_order INTEGER NOT NULL DEFAULT 0,
+            form_order INTEGER NOT NULL DEFAULT 0,
+            default_value TEXT,
+            validation_regex TEXT,
+            validation_message TEXT,
+            help_text TEXT,
+            placeholder TEXT,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            
+            CONSTRAINT fk_entity_fields_entity FOREIGN KEY (entity_id) 
+                REFERENCES %I.entities(id) ON DELETE CASCADE,
+            CONSTRAINT chk_entity_fields_data_type CHECK (data_type IN (''string'', ''number'', ''boolean'', ''date'', ''datetime'', ''uuid'', ''json'', ''text'')),
+            CONSTRAINT chk_entity_fields_field_type CHECK (field_type IN (''text'', ''textarea'', ''number'', ''email'', ''password'', ''select'', ''multiselect'', ''date'', ''datetime'', ''checkbox'', ''file'', ''image''))
+        )', p_schema_name, p_schema_name);
+    
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_entity_fields_entity ON %I.entity_fields(entity_id)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_entity_fields_name ON %I.entity_fields(name)', p_schema_name);
+    
+    -- Entity relationships table
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.entity_relationships (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            entity_id UUID NOT NULL,
+            field_id UUID NOT NULL,
+            related_entity_id UUID NOT NULL,
+            relationship_type VARCHAR(50) NOT NULL,
+            foreign_key_column VARCHAR(100),
+            display_field VARCHAR(100),
+            cascade_delete BOOLEAN NOT NULL DEFAULT false,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            
+            CONSTRAINT fk_entity_relationships_entity FOREIGN KEY (entity_id) 
+                REFERENCES %I.entities(id) ON DELETE CASCADE,
+            CONSTRAINT fk_entity_relationships_field FOREIGN KEY (field_id) 
+                REFERENCES %I.entity_fields(id) ON DELETE CASCADE,
+            CONSTRAINT fk_entity_relationships_related FOREIGN KEY (related_entity_id) 
+                REFERENCES %I.entities(id) ON DELETE CASCADE,
+            CONSTRAINT chk_entity_relationships_type CHECK (relationship_type IN (''many-to-one'', ''one-to-many'', ''many-to-many''))
+        )', p_schema_name, p_schema_name, p_schema_name, p_schema_name);
+    
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_entity_relationships_entity ON %I.entity_relationships(entity_id)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_entity_relationships_related ON %I.entity_relationships(related_entity_id)', p_schema_name);
+    
+    -- Entity field options table
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.entity_field_options (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            field_id UUID NOT NULL,
+            value VARCHAR(100) NOT NULL,
+            label VARCHAR(200) NOT NULL,
+            display_order INTEGER NOT NULL DEFAULT 0,
+            is_active BOOLEAN NOT NULL DEFAULT true,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            
+            CONSTRAINT fk_entity_field_options_field FOREIGN KEY (field_id) 
+                REFERENCES %I.entity_fields(id) ON DELETE CASCADE
+        )', p_schema_name, p_schema_name);
+    
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_entity_field_options_field ON %I.entity_field_options(field_id)', p_schema_name);
+    
+    -- Entity permissions table
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.entity_permissions (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            entity_id UUID NOT NULL,
+            role VARCHAR(50) NOT NULL,
+            can_create BOOLEAN NOT NULL DEFAULT false,
+            can_read BOOLEAN NOT NULL DEFAULT true,
+            can_update BOOLEAN NOT NULL DEFAULT false,
+            can_delete BOOLEAN NOT NULL DEFAULT false,
+            can_read_own_only BOOLEAN NOT NULL DEFAULT false,
+            field_permissions JSONB,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            
+            CONSTRAINT fk_entity_permissions_entity FOREIGN KEY (entity_id) 
+                REFERENCES %I.entities(id) ON DELETE CASCADE,
+            CONSTRAINT chk_entity_permissions_role CHECK (role IN (''admin'', ''manager'', ''operator'')),
+            CONSTRAINT uk_entity_permissions_entity_role UNIQUE (entity_id, role)
+        )', p_schema_name, p_schema_name);
+    
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_entity_permissions_entity ON %I.entity_permissions(entity_id)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_entity_permissions_role ON %I.entity_permissions(role)', p_schema_name);
+    
+    -- Create triggers for metadata tables
+    EXECUTE format('
+        DROP TRIGGER IF EXISTS trg_entities_updated_at ON %I.entities;
+        CREATE TRIGGER trg_entities_updated_at
+            BEFORE UPDATE ON %I.entities
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column()', p_schema_name, p_schema_name);
+    
+    EXECUTE format('
+        DROP TRIGGER IF EXISTS trg_entity_fields_updated_at ON %I.entity_fields;
+        CREATE TRIGGER trg_entity_fields_updated_at
+            BEFORE UPDATE ON %I.entity_fields
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column()', p_schema_name, p_schema_name);
+    
+    EXECUTE format('
+        DROP TRIGGER IF EXISTS trg_entity_permissions_updated_at ON %I.entity_permissions;
+        CREATE TRIGGER trg_entity_permissions_updated_at
+            BEFORE UPDATE ON %I.entity_permissions
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column()', p_schema_name, p_schema_name);
+    
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION create_tenant_schema(VARCHAR) IS 'Creates a complete tenant schema with all required tables and indexes';
