@@ -67,7 +67,8 @@ public class DynamicCrudController : ControllerBase
         [FromQuery] int pageSize = 20,
         [FromQuery] string? search = null,
         [FromQuery] string? orderBy = null,
-        [FromQuery] bool ascending = true)
+        [FromQuery] bool ascending = true,
+        [FromQuery] bool? active = null)
     {
         try
         {
@@ -81,8 +82,15 @@ public class DynamicCrudController : ControllerBase
             if (!_dynamicCrudService.HasPermission(metadata, role, "read"))
                 return StatusCode(403, new { success = false, error = "Acesso negado. Permissão insuficiente." });
             
+            // Build filters
+            Dictionary<string, object?>? filters = null;
+            if (active.HasValue)
+            {
+                filters = new Dictionary<string, object?> { { "active", active.Value } };
+            }
+            
             var (data, totalCount) = await _dynamicCrudService.ListAsync(
-                tenant, metadata, page, pageSize, search, null, orderBy, ascending);
+                tenant, metadata, page, pageSize, search, filters, orderBy, ascending);
             
             return Ok(new
             {
