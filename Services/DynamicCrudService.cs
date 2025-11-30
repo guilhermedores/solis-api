@@ -55,6 +55,47 @@ public class DynamicCrudService
     }
 
     /// <summary>
+    /// Get all available entities
+    /// </summary>
+    public async Task<List<EntityMetadata>> GetAllEntitiesAsync(string tenantSubdomain)
+    {
+        var connectionString = GetConnectionString(tenantSubdomain);
+        
+        using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        
+        var schema = $"tenant_{tenantSubdomain}";
+        
+        // Get all active entities
+        var entities = (await connection.QueryAsync<EntityMetadata>(
+            $@"SELECT id as Id, name as Name, table_name as TableName, display_name as DisplayName, 
+                     description as Description, icon as Icon, allow_create as AllowCreate, 
+                     allow_read as AllowRead, allow_update as AllowUpdate, allow_delete as AllowDelete, 
+                     is_active as IsActive, created_at as CreatedAt, updated_at as UpdatedAt
+              FROM {schema}.entities 
+              WHERE is_active = true
+              ORDER BY display_name"
+        )).ToList();
+        
+        // Load permissions for each entity
+        foreach (var entity in entities)
+        {
+            entity.Permissions = (await connection.QueryAsync<EntityPermission>(
+                $@"SELECT id as Id, entity_id as EntityId, role as Role, 
+                         can_create as CanCreate, can_read as CanRead, 
+                         can_update as CanUpdate, can_delete as CanDelete, 
+                         can_read_own_only as CanReadOwnOnly, field_permissions as FieldPermissions,
+                         created_at as CreatedAt, updated_at as UpdatedAt
+                  FROM {schema}.entity_permissions 
+                  WHERE entity_id = @EntityId",
+                new { EntityId = entity.Id }
+            )).ToList();
+        }
+        
+        return entities;
+    }
+
+    /// <summary>
     /// Get entity metadata by name
     /// </summary>
     public async Task<EntityMetadata?> GetEntityMetadataAsync(string tenantSubdomain, string entityName)

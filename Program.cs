@@ -25,32 +25,27 @@ var builder = WebApplication.CreateBuilder(args);
 // Usar Serilog
 builder.Host.UseSerilog();
 
-// Configuração do CORS por ambiente
+// Configuração do CORS
 builder.Services.AddCors(options =>
 {
-    if (builder.Environment.IsDevelopment())
+    options.AddPolicy("AllowAll", policy =>
     {
-        options.AddPolicy("AllowAll", policy =>
-        {
-            policy.AllowAnyOrigin()
-                  .AllowAnyMethod()
-                  .AllowAnyHeader();
-        });
-    }
-    else
-    {
-        // Em produção, configure domínios específicos
-        var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() 
-            ?? new[] { "https://yourdomain.com" };
-        
-        options.AddPolicy("AllowAll", policy =>
-        {
-            policy.WithOrigins(allowedOrigins)
-                  .AllowAnyMethod()
-                  .AllowAnyHeader()
-                  .AllowCredentials();
-        });
-    }
+        var allowedOrigins = new[] 
+        { 
+            "http://localhost:5173",
+            "http://localhost:5174", 
+            "http://localhost:3000",
+            "http://localhost:4200",
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:5174"
+        };
+
+        policy.WithOrigins(allowedOrigins)
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials()
+              .WithExposedHeaders("Content-Disposition", "Content-Length");
+    });
 });
 
 // Adicionar controllers
