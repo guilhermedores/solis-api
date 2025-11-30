@@ -51,6 +51,13 @@ public class DynamicCrudService
                 _ => element.ToString()
             };
         }
+        
+        // Convert string UUIDs to Guid
+        if (value is string str && Guid.TryParse(str, out var guid))
+        {
+            return guid;
+        }
+        
         return value;
     }
 
@@ -417,8 +424,20 @@ public class DynamicCrudService
             if (values.ContainsKey(field.Name))
             {
                 columns.Add(field.ColumnName);
-                paramNames.Add($"@{field.Name}");
-                parameters.Add(field.Name, ConvertJsonElement(values[field.Name]));
+                
+                var convertedValue = ConvertJsonElement(values[field.Name]);
+                
+                // Add explicit cast for UUID fields
+                if (field.DataType == "uuid" && convertedValue != null)
+                {
+                    paramNames.Add($"@{field.Name}::uuid");
+                }
+                else
+                {
+                    paramNames.Add($"@{field.Name}");
+                }
+                
+                parameters.Add(field.Name, convertedValue);
             }
             else if (field.IsRequired && field.DefaultValue != null)
             {
@@ -467,8 +486,19 @@ public class DynamicCrudService
         {
             if (values.ContainsKey(field.Name))
             {
-                setFields.Add($"{field.ColumnName} = @{field.Name}");
-                parameters.Add(field.Name, ConvertJsonElement(values[field.Name]));
+                var convertedValue = ConvertJsonElement(values[field.Name]);
+                
+                // Add explicit cast for UUID fields
+                if (field.DataType == "uuid" && convertedValue != null)
+                {
+                    setFields.Add($"{field.ColumnName} = @{field.Name}::uuid");
+                }
+                else
+                {
+                    setFields.Add($"{field.ColumnName} = @{field.Name}");
+                }
+                
+                parameters.Add(field.Name, convertedValue);
             }
         }
         
