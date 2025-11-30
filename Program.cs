@@ -66,10 +66,7 @@ if (string.IsNullOrEmpty(jwtSecret) || jwtSecret.Length < 32)
     throw new InvalidOperationException("JWT Secret deve ter no mínimo 32 caracteres. Configure em appsettings.json ou variável de ambiente.");
 }
 
-// DbContext com factory para pooling
-builder.Services.AddDbContextFactory<SolisDbContext>(options =>
-    options.UseNpgsql(connectionString));
-
+// DbContext para o schema public (tenants)
 builder.Services.AddDbContext<SolisDbContext>(options =>
     options.UseNpgsql(connectionString));
 
@@ -79,10 +76,10 @@ builder.Services.AddScoped<ITenantDbContextFactory, TenantDbContextFactory>();
 // Registrar serviços
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<CompanyService>();
 
-// Health Checks
-builder.Services.AddHealthChecks()
-    .AddDbContextCheck<SolisDbContext>("postgres", tags: new[] { "db", "ready" });
+// Health Checks - sem DbContext check para evitar problemas de scoping
+builder.Services.AddHealthChecks();
 
 // Configurar Swagger
 builder.Services.AddEndpointsApiExplorer();

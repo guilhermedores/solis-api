@@ -16,14 +16,10 @@ public interface ITenantDbContextFactory
 /// </summary>
 public class TenantDbContextFactory : ITenantDbContextFactory
 {
-    private readonly IDbContextFactory<SolisDbContext> _mainDbContextFactory;
     private readonly IConfiguration _configuration;
 
-    public TenantDbContextFactory(
-        IDbContextFactory<SolisDbContext> mainDbContextFactory,
-        IConfiguration configuration)
+    public TenantDbContextFactory(IConfiguration configuration)
     {
-        _mainDbContextFactory = mainDbContextFactory;
         _configuration = configuration;
     }
 
