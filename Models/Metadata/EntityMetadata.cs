@@ -11,6 +11,7 @@ public class EntityMetadata
     public string Name { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
     public string TableName { get; set; } = string.Empty;
+    public string? Category { get; set; }
     public string? Icon { get; set; }
     public string? Description { get; set; }
     public bool IsActive { get; set; } = true;

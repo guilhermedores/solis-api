@@ -164,7 +164,7 @@ INSERT INTO tenant_demo.entities (id, name, display_name, table_name, category, 
 VALUES (
     'e0000000-0000-0000-0000-000000000002',
     'company',
-    'Empresas',
+    'Empresa',
     'companies',
     'Fiscal',
     'building',

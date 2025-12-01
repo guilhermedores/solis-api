@@ -76,12 +76,13 @@ public class DynamicCrudService
         // Get all active entities
         var entities = (await connection.QueryAsync<EntityMetadata>(
             $@"SELECT id as Id, name as Name, table_name as TableName, display_name as DisplayName, 
-                     description as Description, icon as Icon, allow_create as AllowCreate, 
-                     allow_read as AllowRead, allow_update as AllowUpdate, allow_delete as AllowDelete, 
+                     category as Category, description as Description, icon as Icon, 
+                     allow_create as AllowCreate, allow_read as AllowRead, 
+                     allow_update as AllowUpdate, allow_delete as AllowDelete, 
                      is_active as IsActive, created_at as CreatedAt, updated_at as UpdatedAt
               FROM {schema}.entities 
               WHERE is_active = true
-              ORDER BY display_name"
+              ORDER BY category, display_name"
         )).ToList();
         
         // Load permissions for each entity
@@ -117,8 +118,9 @@ public class DynamicCrudService
         // Get entity
         var entity = await connection.QueryFirstOrDefaultAsync<EntityMetadata>(
             $@"SELECT id as Id, name as Name, table_name as TableName, display_name as DisplayName, 
-                     description as Description, icon as Icon, allow_create as AllowCreate, 
-                     allow_read as AllowRead, allow_update as AllowUpdate, allow_delete as AllowDelete, 
+                     category as Category, description as Description, icon as Icon, 
+                     allow_create as AllowCreate, allow_read as AllowRead, 
+                     allow_update as AllowUpdate, allow_delete as AllowDelete, 
                      is_active as IsActive, created_at as CreatedAt, updated_at as UpdatedAt
               FROM {schema}.entities 
               WHERE name = @EntityName AND is_active = true",

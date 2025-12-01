@@ -50,6 +50,7 @@ public class EntitiesController : ControllerBase
                 {
                     name = e.Name,
                     displayName = e.DisplayName,
+                    category = e.Category,
                     icon = e.Icon,
                     description = e.Description,
                     allowCreate = e.AllowCreate && _dynamicCrudService.HasPermission(e, role, "create"),
