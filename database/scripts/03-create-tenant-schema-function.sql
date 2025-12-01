@@ -361,10 +361,13 @@ BEGIN
             EXECUTE FUNCTION update_updated_at_column()', p_schema_name, p_schema_name);
     
     -- Create products table
+    -- Create sequence for internal_code
+    EXECUTE format('CREATE SEQUENCE IF NOT EXISTS %I.products_internal_code_seq START 1', p_schema_name);
+    
     EXECUTE format('
         CREATE TABLE IF NOT EXISTS %I.products (
             id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-            internal_code VARCHAR(50) UNIQUE NOT NULL,
+            internal_code VARCHAR(50) UNIQUE NOT NULL DEFAULT nextval(''%I.products_internal_code_seq''),
             barcode VARCHAR(13),
             description TEXT NOT NULL,
             active BOOLEAN NOT NULL DEFAULT true,
@@ -397,7 +400,7 @@ BEGIN
             CONSTRAINT chk_products_sale_price CHECK (sale_price >= 0),
             CONSTRAINT chk_products_cost_price CHECK (cost_price IS NULL OR cost_price >= 0),
             CONSTRAINT chk_products_purchase_price CHECK (purchase_price IS NULL OR purchase_price >= 0)
-        )', p_schema_name, p_schema_name, p_schema_name, p_schema_name);
+        )', p_schema_name, p_schema_name, p_schema_name, p_schema_name, p_schema_name);
     
     EXECUTE format('CREATE INDEX IF NOT EXISTS idx_products_internal_code ON %I.products(internal_code)', p_schema_name);
     EXECUTE format('CREATE INDEX IF NOT EXISTS idx_products_barcode ON %I.products(barcode)', p_schema_name);
