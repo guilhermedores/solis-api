@@ -123,17 +123,46 @@ Write-Host @"
 
 Write-TestHeader "1. Health Check"
 
-Invoke-ApiTest -Method GET -Endpoint "/api/health" -TestName "Health endpoint responds"
+Invoke-ApiTest -Method GET -Endpoint "/health" -TestName "Health endpoint responds"
 
 # ====================
-# 2. AUTHENTICATION
+# 2. TENANT CHECK (PUBLIC)
 # ====================
 
-Write-TestHeader "2. Authentication Tests"
+Write-TestHeader "2. Tenant Check Tests (Public - No Auth)"
+
+# Remove token temporariamente para testar endpoint público
+$savedToken = $Global:Token
+$Global:Token = ""
+
+# Verificar tenant existente e ativo
+$tenantCheck = Invoke-ApiTest -Method GET -Endpoint "/api/tenants/check/$Tenant" `
+    -TestName "Check existing tenant (demo)"
+
+if ($tenantCheck) {
+    Write-Host "  Tenant exists: $($tenantCheck.exists), Active: $($tenantCheck.active), Name: $($tenantCheck.tradeName)" -ForegroundColor Gray
+}
+
+# Verificar tenant inexistente
+$nonExistentCheck = Invoke-ApiTest -Method GET -Endpoint "/api/tenants/check/nonexistent" `
+    -TestName "Check non-existent tenant"
+
+if ($nonExistentCheck) {
+    Write-Host "  Tenant exists: $($nonExistentCheck.exists)" -ForegroundColor Gray
+}
+
+# Restaurar token
+$Global:Token = $savedToken
+
+# ====================
+# 3. AUTHENTICATION
+# ====================
+
+Write-TestHeader "3. Authentication Tests"
 
 # Login com admin
 $loginResponse = Invoke-ApiTest -Method POST -Endpoint "/api/auth/login" `
-    -Body @{email="admin@demo.com"; password="Admin@123"} `
+    -Body @{email="admin@internal.com"; password="Admin@123"} `
     -TestName "Login with admin credentials"
 
 if ($loginResponse -and $loginResponse.token) {
@@ -143,15 +172,32 @@ if ($loginResponse -and $loginResponse.token) {
 
 # Login com credenciais inválidas (deve falhar)
 Invoke-ApiTest -Method POST -Endpoint "/api/auth/login" `
-    -Body @{email="admin@demo.com"; password="WrongPassword"} `
+    -Body @{email="admin@internal.com"; password="WrongPassword"} `
     -ExpectedStatus 401 `
     -TestName "Login with invalid password fails"
 
 # ====================
-# 3. DYNAMIC CRUD - USER
+# 4. ENTITIES LIST
 # ====================
 
-Write-TestHeader "3. Dynamic CRUD - User Entity"
+Write-TestHeader "4. Entities List"
+
+$entitiesResponse = Invoke-ApiTest -Method GET -Endpoint "/api/entities" `
+    -TestName "Get all entities with categories"
+
+if ($entitiesResponse -and $entitiesResponse.entities) {
+    Write-Host "  Found $($entitiesResponse.entities.Count) accessible entities" -ForegroundColor Gray
+    $grouped = $entitiesResponse.entities | Group-Object -Property category
+    foreach ($group in $grouped) {
+        Write-Host "    $($group.Name): $($group.Count) entities" -ForegroundColor Gray
+    }
+}
+
+# ====================
+# 5. DYNAMIC CRUD - USER
+# ====================
+
+Write-TestHeader "5. Dynamic CRUD - User Entity"
 
 # Get metadata
 Invoke-ApiTest -Method GET -Endpoint "/api/dynamic/user/_metadata" `
@@ -179,7 +225,7 @@ if ($users -and $users.data -and $users.data.Count -gt 0) {
 $newUser = Invoke-ApiTest -Method POST -Endpoint "/api/dynamic/user" `
     -Body @{
         name = "Test User $(Get-Random -Maximum 1000)"
-        email = "testuser$(Get-Random -Maximum 10000)@demo.com"
+        email = "testuser$(Get-Random -Maximum 10000)@internal.com"
         password = "Test@123"
         role = "operator"
         active = $true
@@ -207,10 +253,10 @@ Invoke-ApiTest -Method GET -Endpoint "/api/dynamic/user?search=admin" `
     -TestName "Search users by name/email"
 
 # ====================
-# 4. DYNAMIC CRUD - TAX REGIME
+# 6. DYNAMIC CRUD - TAX REGIME
 # ====================
 
-Write-TestHeader "4. Dynamic CRUD - Tax Regime Entity"
+Write-TestHeader "6. Dynamic CRUD - Tax Regime Entity"
 
 Invoke-ApiTest -Method GET -Endpoint "/api/dynamic/tax_regime/_metadata" `
     -TestName "Get tax_regime metadata"
@@ -223,10 +269,10 @@ if ($taxRegimes -and $taxRegimes.data) {
 }
 
 # ====================
-# 5. DYNAMIC CRUD - SPECIAL TAX REGIME
+# 7. DYNAMIC CRUD - SPECIAL TAX REGIME
 # ====================
 
-Write-TestHeader "5. Dynamic CRUD - Special Tax Regime Entity"
+Write-TestHeader "7. Dynamic CRUD - Special Tax Regime Entity"
 
 Invoke-ApiTest -Method GET -Endpoint "/api/dynamic/special_tax_regime/_metadata" `
     -TestName "Get special_tax_regime metadata"
@@ -239,10 +285,10 @@ if ($specialTaxRegimes -and $specialTaxRegimes.data) {
 }
 
 # ====================
-# 6. DYNAMIC CRUD - COMPANY
+# 8. DYNAMIC CRUD - COMPANY
 # ====================
 
-Write-TestHeader "6. Dynamic CRUD - Company Entity"
+Write-TestHeader "8. Dynamic CRUD - Company Entity"
 
 Invoke-ApiTest -Method GET -Endpoint "/api/dynamic/company/_metadata" `
     -TestName "Get company metadata"
@@ -275,10 +321,52 @@ if ($companies -and $companies.data -and $companies.data.Count -gt 0) {
 }
 
 # ====================
-# 7. FIELD OPTIONS
+# 9. DYNAMIC CRUD - PRODUCTS MODULE
 # ====================
 
-Write-TestHeader "7. Field Options Tests"
+Write-TestHeader "9. Dynamic CRUD - Products Module"
+
+# Product Groups
+$productGroups = Invoke-ApiTest -Method GET -Endpoint "/api/dynamic/product_group" `
+    -TestName "List product groups"
+
+if ($productGroups -and $productGroups.data) {
+    Write-Host "  Found $($productGroups.data.Count) product groups" -ForegroundColor Gray
+}
+
+# Product Subgroups
+$productSubgroups = Invoke-ApiTest -Method GET -Endpoint "/api/dynamic/product_subgroup" `
+    -TestName "List product subgroups"
+
+if ($productSubgroups -and $productSubgroups.data) {
+    Write-Host "  Found $($productSubgroups.data.Count) product subgroups" -ForegroundColor Gray
+}
+
+# Brands
+$brands = Invoke-ApiTest -Method GET -Endpoint "/api/dynamic/brand" `
+    -TestName "List brands"
+
+if ($brands -and $brands.data) {
+    Write-Host "  Found $($brands.data.Count) brands" -ForegroundColor Gray
+}
+
+# Products
+$products = Invoke-ApiTest -Method GET -Endpoint "/api/dynamic/product" `
+    -TestName "List products"
+
+if ($products -and $products.data) {
+    Write-Host "  Found $($products.data.Count) products" -ForegroundColor Gray
+}
+
+# Product metadata
+Invoke-ApiTest -Method GET -Endpoint "/api/dynamic/product/_metadata" `
+    -TestName "Get product metadata"
+
+# ====================
+# 10. FIELD OPTIONS
+# ====================
+
+Write-TestHeader "10. Field Options Tests"
 
 if ($users -and $users.data -and $users.data.Count -gt 0) {
     $userId = $users.data[0].data.id
@@ -337,9 +425,9 @@ Write-Host "Failed: " -NoNewline
 Write-Host $Global:TestsFailed -ForegroundColor Red
 
 if ($Global:TestsFailed -eq 0) {
-    Write-Host "`n✓ ALL TESTS PASSED!" -ForegroundColor Green
+    Write-Host "`n[PASS] ALL TESTS PASSED!" -ForegroundColor Green
     exit 0
 } else {
-    Write-Host "`n✗ SOME TESTS FAILED" -ForegroundColor Red
+    Write-Host "`n[FAIL] SOME TESTS FAILED" -ForegroundColor Red
     exit 1
 }
