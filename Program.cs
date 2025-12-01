@@ -26,15 +26,37 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog();
 
 // Configuração do CORS
+var allowedOrigins = Environment.GetEnvironmentVariable("CORS_ORIGINS")
+    ?? builder.Configuration["Cors:AllowedOrigins"] 
+    ?? string.Empty;
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
-    {        
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials()
-              .WithExposedHeaders("Content-Disposition", "Content-Length");
+    {
+        if (!string.IsNullOrWhiteSpace(allowedOrigins))
+        {
+            var origins = allowedOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                                       .Select(o => o.Trim())
+                                       .ToArray();
+            
+            policy.WithOrigins(origins)
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .AllowCredentials()
+                  .WithExposedHeaders("Content-Disposition", "Content-Length");
+            
+            Log.Information("CORS configurado com origens específicas: {Origins}", string.Join(", ", origins));
+        }
+        else
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .WithExposedHeaders("Content-Disposition", "Content-Length");
+            
+            Log.Warning("CORS configurado para AllowAnyOrigin - configure CORS_ORIGINS para produção");
+        }
     });
 });
 
@@ -45,10 +67,18 @@ builder.Services.AddControllers();
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 // Validar JWT Secret
-var jwtSecret = builder.Configuration["Jwt:Secret"];
+var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET")
+    ?? builder.Configuration["Jwt:Secret"];
+
 if (string.IsNullOrEmpty(jwtSecret) || jwtSecret.Length < 32)
 {
-    throw new InvalidOperationException("JWT Secret deve ter no mínimo 32 caracteres. Configure em appsettings.json ou variável de ambiente.");
+    throw new InvalidOperationException("JWT Secret deve ter no mínimo 32 caracteres. Configure JWT_SECRET ou Jwt:Secret em appsettings.json.");
+}
+
+// Atualizar configuração com a secret da variável de ambiente
+if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("JWT_SECRET")))
+{
+    builder.Configuration["Jwt:Secret"] = jwtSecret;
 }
 
 // DbContext para o schema public (tenants)

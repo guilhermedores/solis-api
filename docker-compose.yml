@@ -31,7 +31,8 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_HTTP_PORTS=8080
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=solis_pdv;Username=solis_user;Password=solis2024;Include Error Detail=true
-      - Jwt__SecretKey=your-super-secret-key-change-this-in-production-min-32-chars
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+      - JWT_SECRET=your-super-secret-key-change-this-in-production-min-32-chars
       - Jwt__Issuer=SolisAPI
       - Jwt__Audience=SolisClients
       - Jwt__ExpirationHours=24
