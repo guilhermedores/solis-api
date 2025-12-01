@@ -109,16 +109,12 @@ var app = builder.Build();
 // Middleware global de exceções (deve ser o primeiro)
 app.UseGlobalExceptionHandler();
 
-// Configurar pipeline HTTP
-if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Solis API v1");
-        c.RoutePrefix = "docs"; // Acesso via /docs
-    });
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Solis API v1");
+    c.RoutePrefix = "docs"; // Acesso via /docs
+});
 
 app.UseCors("AllowAll");
 

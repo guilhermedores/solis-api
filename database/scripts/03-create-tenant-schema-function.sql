@@ -141,13 +141,14 @@ BEGIN
     EXECUTE format('COMMENT ON TABLE %I.companies IS ''Companies table for tenant %I''', p_schema_name, p_schema_name);
     
     -- Create metadata tables for dynamic CRUD
-    -- Entities table
+    -- Entity metadata table
     EXECUTE format('
         CREATE TABLE IF NOT EXISTS %I.entities (
             id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
             name VARCHAR(100) NOT NULL UNIQUE,
             display_name VARCHAR(200) NOT NULL,
             table_name VARCHAR(100) NOT NULL,
+            category VARCHAR(100),
             icon VARCHAR(50),
             description TEXT,
             is_active BOOLEAN NOT NULL DEFAULT true,
@@ -287,6 +288,134 @@ BEGIN
             BEFORE UPDATE ON %I.entity_permissions
             FOR EACH ROW
             EXECUTE FUNCTION update_updated_at_column()', p_schema_name, p_schema_name);
+    
+    -- =====================================================
+    -- PRODUCTS MODULE TABLES
+    -- =====================================================
+    
+    -- Create product_groups table
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.product_groups (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            code VARCHAR(10) UNIQUE NOT NULL,
+            name VARCHAR(100) NOT NULL,
+            active BOOLEAN NOT NULL DEFAULT true,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )', p_schema_name);
+    
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_product_groups_code ON %I.product_groups(code)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_product_groups_active ON %I.product_groups(active)', p_schema_name);
+    
+    EXECUTE format('
+        DROP TRIGGER IF EXISTS trg_product_groups_updated_at ON %I.product_groups;
+        CREATE TRIGGER trg_product_groups_updated_at
+            BEFORE UPDATE ON %I.product_groups
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column()', p_schema_name, p_schema_name);
+    
+    -- Create product_subgroups table
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.product_subgroups (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            code VARCHAR(10) UNIQUE NOT NULL,
+            name VARCHAR(100) NOT NULL,
+            product_group_id UUID,
+            active BOOLEAN NOT NULL DEFAULT true,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            
+            CONSTRAINT fk_subgroup_group FOREIGN KEY (product_group_id) 
+                REFERENCES %I.product_groups(id) ON DELETE RESTRICT
+        )', p_schema_name, p_schema_name);
+    
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_product_subgroups_code ON %I.product_subgroups(code)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_product_subgroups_group ON %I.product_subgroups(product_group_id)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_product_subgroups_active ON %I.product_subgroups(active)', p_schema_name);
+    
+    EXECUTE format('
+        DROP TRIGGER IF EXISTS trg_product_subgroups_updated_at ON %I.product_subgroups;
+        CREATE TRIGGER trg_product_subgroups_updated_at
+            BEFORE UPDATE ON %I.product_subgroups
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column()', p_schema_name, p_schema_name);
+    
+    -- Create brands table
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.brands (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            name VARCHAR(100) UNIQUE NOT NULL,
+            active BOOLEAN NOT NULL DEFAULT true,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )', p_schema_name);
+    
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_brands_name ON %I.brands(name)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_brands_active ON %I.brands(active)', p_schema_name);
+    
+    EXECUTE format('
+        DROP TRIGGER IF EXISTS trg_brands_updated_at ON %I.brands;
+        CREATE TRIGGER trg_brands_updated_at
+            BEFORE UPDATE ON %I.brands
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column()', p_schema_name, p_schema_name);
+    
+    -- Create products table
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.products (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            internal_code VARCHAR(50) UNIQUE NOT NULL,
+            barcode VARCHAR(13),
+            description TEXT NOT NULL,
+            active BOOLEAN NOT NULL DEFAULT true,
+            product_group_id UUID,
+            product_subgroup_id UUID,
+            brand_id UUID,
+            own_production BOOLEAN NOT NULL DEFAULT false,
+            unit_of_measure VARCHAR(10) NOT NULL DEFAULT ''UN'',
+            ncm VARCHAR(8) NOT NULL,
+            cest VARCHAR(7),
+            product_origin INTEGER NOT NULL DEFAULT 0,
+            item_type INTEGER NOT NULL DEFAULT 0,
+            incide_pis_cofins BOOLEAN NOT NULL DEFAULT true,
+            sale_price DECIMAL(15,2) NOT NULL,
+            cost_price DECIMAL(15,2),
+            purchase_price DECIMAL(15,2),
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            
+            CONSTRAINT fk_products_group FOREIGN KEY (product_group_id) 
+                REFERENCES %I.product_groups(id) ON DELETE RESTRICT,
+            CONSTRAINT fk_products_subgroup FOREIGN KEY (product_subgroup_id) 
+                REFERENCES %I.product_subgroups(id) ON DELETE RESTRICT,
+            CONSTRAINT fk_products_brand FOREIGN KEY (brand_id) 
+                REFERENCES %I.brands(id) ON DELETE RESTRICT,
+            CONSTRAINT chk_products_ncm_length CHECK (LENGTH(ncm) = 8),
+            CONSTRAINT chk_products_cest_length CHECK (cest IS NULL OR LENGTH(cest) = 7),
+            CONSTRAINT chk_products_product_origin CHECK (product_origin BETWEEN 0 AND 8),
+            CONSTRAINT chk_products_item_type CHECK (item_type BETWEEN 0 AND 99),
+            CONSTRAINT chk_products_sale_price CHECK (sale_price >= 0),
+            CONSTRAINT chk_products_cost_price CHECK (cost_price IS NULL OR cost_price >= 0),
+            CONSTRAINT chk_products_purchase_price CHECK (purchase_price IS NULL OR purchase_price >= 0)
+        )', p_schema_name, p_schema_name, p_schema_name, p_schema_name);
+    
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_products_internal_code ON %I.products(internal_code)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_products_barcode ON %I.products(barcode)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_products_active ON %I.products(active)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_products_product_group ON %I.products(product_group_id)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_products_ncm ON %I.products(ncm)', p_schema_name);
+    
+    EXECUTE format('
+        DROP TRIGGER IF EXISTS trg_products_updated_at ON %I.products;
+        CREATE TRIGGER trg_products_updated_at
+            BEFORE UPDATE ON %I.products
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column()', p_schema_name, p_schema_name);
+    
+    EXECUTE format('COMMENT ON TABLE %I.product_groups IS ''Product groups table for tenant %I''', p_schema_name, p_schema_name);
+    EXECUTE format('COMMENT ON TABLE %I.product_subgroups IS ''Product subgroups table for tenant %I''', p_schema_name, p_schema_name);
+    EXECUTE format('COMMENT ON TABLE %I.brands IS ''Brands table for tenant %I''', p_schema_name, p_schema_name);
+    EXECUTE format('COMMENT ON TABLE %I.products IS ''Products table for tenant %I''', p_schema_name, p_schema_name);
     
 END;
 $$ LANGUAGE plpgsql;

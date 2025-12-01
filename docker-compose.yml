@@ -29,7 +29,7 @@ services:
     restart: unless-stopped
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ASPNETCORE_URLS=http://+:8080
+      - ASPNETCORE_HTTP_PORTS=8080
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=solis_pdv;Username=solis_user;Password=solis2024;Include Error Detail=true
       - Jwt__SecretKey=your-super-secret-key-change-this-in-production-min-32-chars
       - Jwt__Issuer=SolisAPI
