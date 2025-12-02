@@ -26,36 +26,58 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog();
 
 // Configuração do CORS
-var allowedOrigins = Environment.GetEnvironmentVariable("CORS_ORIGINS")
-    ?? builder.Configuration["Cors:AllowedOrigins"] 
-    ?? string.Empty;
+// ===== CORS ORIGINS =====
+var corsOrigins = Environment.GetEnvironmentVariable("CORS_ORIGINS");
+if (string.IsNullOrEmpty(corsOrigins))
+{
+    corsOrigins = "http://localhost:5173"; // Fallback para dev local
+}
 
+// Configurar CORS com suporte a wildcard (*.projetosolis.com.br)
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("AllowSolisAdmin", policy =>
     {
-        if (!string.IsNullOrWhiteSpace(allowedOrigins))
+        var origins = corsOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                                 .Select(o => o.Trim())
+                                 .ToArray();
+        
+        // Se tem wildcard (*.), usar SetIsOriginAllowed
+        if (origins.Any(o => o.Contains("*")))
         {
-            var origins = allowedOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                                       .Select(o => o.Trim())
-                                       .ToArray();
-            
-            policy.WithOrigins(origins)
-                  .AllowAnyMethod()
-                  .AllowAnyHeader()
-                  .AllowCredentials()
-                  .WithExposedHeaders("Content-Disposition", "Content-Length");
-            
-            Log.Information("CORS configurado com origens específicas: {Origins}", string.Join(", ", origins));
+            policy.SetIsOriginAllowed(origin =>
+            {
+                if (string.IsNullOrEmpty(origin))
+                    return false;
+
+                foreach (var allowedOrigin in origins)
+                {
+                    // Se for wildcard (ex: https://*.projetosolis.com.br)
+                    if (allowedOrigin.Contains("*"))
+                    {
+                        var pattern = allowedOrigin.Replace("*", ".*");
+                        if (System.Text.RegularExpressions.Regex.IsMatch(origin, pattern))
+                            return true;
+                    }
+                    // Se for origem exata
+                    else if (origin.Equals(allowedOrigin, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            })
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
         }
         else
         {
-            policy.AllowAnyOrigin()
+            // Se não tem wildcard, usar WithOrigins normal
+            policy.WithOrigins(origins)
                   .AllowAnyMethod()
                   .AllowAnyHeader()
-                  .WithExposedHeaders("Content-Disposition", "Content-Length");
-            
-            Log.Warning("CORS configurado para AllowAnyOrigin - configure CORS_ORIGINS para produção");
+                  .AllowCredentials();
         }
     });
 });
@@ -136,7 +158,7 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "docs"; // Acesso via /docs
 });
 
-app.UseCors("AllowAll");
+app.UseCors("AllowSolisAdmin");
 
 app.UseHttpsRedirection();
 
