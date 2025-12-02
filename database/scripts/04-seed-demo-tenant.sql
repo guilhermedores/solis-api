@@ -488,3 +488,91 @@ BEGIN
     RAISE NOTICE 'Tables: product_prices (soft-delete), product_costs (soft-delete)';
     RAISE NOTICE 'Admin can update/delete (soft-delete via active flag), others read-only or create-only';
 END $$;
+
+-- =====================================================
+-- PAYMENT MODULE - SEED DATA AND ENTITIES
+-- =====================================================
+
+-- Seed payment types (read-only reference data)
+INSERT INTO tenant_internal.payment_types (id, code, description, active)
+VALUES 
+    ('50000000-0000-0000-0000-000000000001', '1', 'Dinheiro', true),
+    ('50000000-0000-0000-0000-000000000002', '2', 'PIX', true),
+    ('50000000-0000-0000-0000-000000000003', '3', 'Cartão de Crédito', true),
+    ('50000000-0000-0000-0000-000000000004', '4', 'Boleto', true),
+    ('50000000-0000-0000-0000-000000000005', '5', 'Cheque', true)
+ON CONFLICT (code) DO NOTHING;
+
+-- Register payment_type entity (read-only)
+INSERT INTO tenant_internal.entities (id, name, display_name, table_name, category, icon, description, allow_create, allow_read, allow_update, allow_delete)
+VALUES (
+    'e0000000-0000-0000-0000-000000000011',
+    'payment_type',
+    'Tipos de Forma de Pagamento',
+    'payment_types',
+    'Pagamentos',
+    'CreditCard',
+    'Tipos de forma de pagamento (somente leitura - referência do sistema)',
+    false, true, false, false
+);
+
+-- Register payment_type fields
+INSERT INTO tenant_internal.entity_fields (id, entity_id, name, display_name, column_name, data_type, is_required, is_readonly, is_system_field, show_in_list, show_in_detail, show_in_create, show_in_update, list_order, form_order, field_type, placeholder, help_text, validation_regex, default_value) VALUES
+('f1100000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000011', 'id', 'ID', 'id', 'uuid', true, true, true, false, true, false, false, 0, 0, 'text', NULL, NULL, NULL, NULL),
+('f1100000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000011', 'code', 'Código', 'code', 'string', true, true, false, true, true, false, false, 1, 0, 'text', NULL, 'Código único do tipo de pagamento', NULL, NULL),
+('f1100000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000011', 'description', 'Descrição', 'description', 'string', true, true, false, true, true, false, false, 2, 0, 'text', NULL, 'Descrição do tipo de pagamento', NULL, NULL),
+('f1100000-0000-0000-0000-000000000004', 'e0000000-0000-0000-0000-000000000011', 'active', 'Ativo', 'active', 'boolean', true, true, false, true, true, false, false, 3, 0, 'checkbox', NULL, 'Indica se o tipo está em uso', NULL, 'true'),
+('f1100000-0000-0000-0000-000000000005', 'e0000000-0000-0000-0000-000000000011', 'created_at', 'Criado em', 'created_at', 'datetime', true, true, true, false, true, false, false, 0, 0, 'datetime', NULL, NULL, NULL, NULL),
+('f1100000-0000-0000-0000-000000000006', 'e0000000-0000-0000-0000-000000000011', 'updated_at', 'Atualizado em', 'updated_at', 'datetime', true, true, true, false, true, false, false, 0, 0, 'datetime', NULL, NULL, NULL, NULL)
+ON CONFLICT (id) DO NOTHING;
+
+-- Register payment_type permissions (read-only for all roles)
+INSERT INTO tenant_internal.entity_permissions (entity_id, role, can_create, can_read, can_update, can_delete) VALUES
+('e0000000-0000-0000-0000-000000000011', 'admin', false, true, false, false),
+('e0000000-0000-0000-0000-000000000011', 'manager', false, true, false, false),
+('e0000000-0000-0000-0000-000000000011', 'operator', false, true, false, false)
+ON CONFLICT (entity_id, role) DO NOTHING;
+
+-- Register payment_method entity (full CRUD)
+INSERT INTO tenant_internal.entities (id, name, display_name, table_name, category, icon, description, allow_create, allow_read, allow_update, allow_delete)
+VALUES (
+    'e0000000-0000-0000-0000-000000000012',
+    'payment_method',
+    'Formas de Pagamento',
+    'payment_methods',
+    'Pagamentos',
+    'Wallet',
+    'Formas de pagamento configuradas para a empresa (soft-delete habilitado)',
+    true, true, true, true
+);
+
+-- Register payment_method fields
+INSERT INTO tenant_internal.entity_fields (id, entity_id, name, display_name, column_name, data_type, is_required, is_readonly, is_system_field, show_in_list, show_in_detail, show_in_create, show_in_update, list_order, form_order, field_type, placeholder, help_text, validation_regex, default_value) VALUES
+('f1200000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000012', 'id', 'ID', 'id', 'uuid', true, true, true, false, true, false, false, 0, 0, 'text', NULL, NULL, NULL, NULL),
+('f1200000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000012', 'description', 'Descrição', 'description', 'string', true, false, false, true, true, true, true, 1, 1, 'text', 'PIX Chave CPF', 'Nome da forma de pagamento (ex: PIX Chave CPF, Dinheiro Balcão)', NULL, NULL),
+('f1200000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000012', 'payment_type_id', 'Tipo de Pagamento', 'payment_type_id', 'uuid', true, false, false, true, true, true, false, 2, 2, 'select', NULL, 'Selecione o tipo de forma de pagamento', NULL, NULL),
+('f1200000-0000-0000-0000-000000000004', 'e0000000-0000-0000-0000-000000000012', 'active', 'Ativo', 'active', 'boolean', true, false, false, true, true, true, true, 3, 3, 'checkbox', NULL, 'Ativar/desativar esta forma de pagamento', NULL, 'true'),
+('f1200000-0000-0000-0000-000000000005', 'e0000000-0000-0000-0000-000000000012', 'created_at', 'Criado em', 'created_at', 'datetime', true, true, true, true, true, false, false, 4, 0, 'datetime', NULL, NULL, NULL, NULL),
+('f1200000-0000-0000-0000-000000000006', 'e0000000-0000-0000-0000-000000000012', 'updated_at', 'Atualizado em', 'updated_at', 'datetime', true, true, true, false, true, false, false, 0, 0, 'datetime', NULL, NULL, NULL, NULL)
+ON CONFLICT (id) DO NOTHING;
+
+-- Register payment_method relationships
+INSERT INTO tenant_internal.entity_relationships (id, entity_id, field_id, related_entity_id, relationship_type, foreign_key_column, display_field) VALUES
+('50000000-0000-0000-0000-000000000006', 'e0000000-0000-0000-0000-000000000012', 'f1200000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000011', 'many-to-one', 'payment_type_id', 'description')
+ON CONFLICT (id) DO NOTHING;
+
+-- Register payment_method permissions (full CRUD for admin, create/read for manager, read-only for operator)
+INSERT INTO tenant_internal.entity_permissions (entity_id, role, can_create, can_read, can_update, can_delete) VALUES
+('e0000000-0000-0000-0000-000000000012', 'admin', true, true, true, true),
+('e0000000-0000-0000-0000-000000000012', 'manager', true, true, false, false),
+('e0000000-0000-0000-0000-000000000012', 'operator', false, true, false, false)
+ON CONFLICT (entity_id, role) DO NOTHING;
+
+-- Log payment module completion
+DO $$
+BEGIN
+    RAISE NOTICE '💳 Payment module seeded successfully';
+    RAISE NOTICE 'Payment Types: Dinheiro, PIX, Cartão de Crédito, Boleto, Cheque (read-only)';
+    RAISE NOTICE 'Payment Methods: Full CRUD enabled, linked to payment types';
+    RAISE NOTICE 'Entities: payment_type (read-only), payment_method (full CRUD)';
+END $$;

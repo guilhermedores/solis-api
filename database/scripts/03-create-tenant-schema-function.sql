@@ -486,6 +486,60 @@ BEGIN
     
     EXECUTE format('COMMENT ON TABLE %I.product_costs IS ''Product cost history (soft-delete enabled) for tenant %I''', p_schema_name, p_schema_name);
     
+    -- =====================================================
+    -- PAYMENT MODULE TABLES
+    -- =====================================================
+    
+    -- Create payment_types table (imutável - read-only)
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.payment_types (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            code VARCHAR(10) UNIQUE NOT NULL,
+            description VARCHAR(100) NOT NULL,
+            active BOOLEAN NOT NULL DEFAULT true,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )', p_schema_name);
+    
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_payment_types_code ON %I.payment_types(code)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_payment_types_active ON %I.payment_types(active)', p_schema_name);
+    
+    EXECUTE format('
+        DROP TRIGGER IF EXISTS trg_payment_types_updated_at ON %I.payment_types;
+        CREATE TRIGGER trg_payment_types_updated_at
+            BEFORE UPDATE ON %I.payment_types
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column()', p_schema_name, p_schema_name);
+    
+    EXECUTE format('COMMENT ON TABLE %I.payment_types IS ''Payment types reference table (read-only) for tenant %I''', p_schema_name, p_schema_name);
+    
+    -- Create payment_methods table
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.payment_methods (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            description VARCHAR(100) NOT NULL,
+            payment_type_id UUID NOT NULL,
+            active BOOLEAN NOT NULL DEFAULT true,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            
+            CONSTRAINT fk_payment_methods_type FOREIGN KEY (payment_type_id) 
+                REFERENCES %I.payment_types(id) ON DELETE RESTRICT,
+            CONSTRAINT uk_payment_methods_desc UNIQUE (description)
+        )', p_schema_name, p_schema_name);
+    
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_payment_methods_type ON %I.payment_methods(payment_type_id)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_payment_methods_active ON %I.payment_methods(active)', p_schema_name);
+    
+    EXECUTE format('
+        DROP TRIGGER IF EXISTS trg_payment_methods_updated_at ON %I.payment_methods;
+        CREATE TRIGGER trg_payment_methods_updated_at
+            BEFORE UPDATE ON %I.payment_methods
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column()', p_schema_name, p_schema_name);
+    
+    EXECUTE format('COMMENT ON TABLE %I.payment_methods IS ''Payment methods table for tenant %I''', p_schema_name, p_schema_name);
+    
 END;
 $$ LANGUAGE plpgsql;
 
