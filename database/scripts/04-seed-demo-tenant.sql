@@ -322,9 +322,6 @@ INSERT INTO tenant_internal.entity_fields (id, entity_id, name, display_name, co
 ('f0500000-0000-0000-0000-000000000013', 'e0000000-0000-0000-0000-000000000005', 'product_origin', 'Código Origem do Produto', 'product_origin', 'number', true, false, false, false, true, true, true, 0, 12, 'select', NULL, 'Define a origem da mercadoria', NULL, '0'),
 ('f0500000-0000-0000-0000-000000000014', 'e0000000-0000-0000-0000-000000000005', 'item_type', 'Tipo de Item', 'item_type', 'number', true, false, false, false, true, true, true, 0, 13, 'select', NULL, 'Mercadoria para Revenda, etc.', NULL, '0'),
 ('f0500000-0000-0000-0000-000000000015', 'e0000000-0000-0000-0000-000000000005', 'incide_pis_cofins', 'Incide PIS/COFINS?', 'incide_pis_cofins', 'boolean', true, false, false, false, true, true, true, 0, 14, 'checkbox', NULL, 'Flag para regra tributária', NULL, 'true'),
-('f0500000-0000-0000-0000-000000000016', 'e0000000-0000-0000-0000-000000000005', 'sale_price', 'Preço de Venda', 'sale_price', 'number', true, false, false, true, true, true, true, 6, 15, 'number', '10.00', 'Valor no PDV', NULL, NULL),
-('f0500000-0000-0000-0000-000000000017', 'e0000000-0000-0000-0000-000000000005', 'cost_price', 'Preço de Custo', 'cost_price', 'number', false, false, false, false, true, true, true, 0, 16, 'number', '4.50', 'Para cálculo de margem', NULL, NULL),
-('f0500000-0000-0000-0000-000000000018', 'e0000000-0000-0000-0000-000000000005', 'purchase_price', 'Valor de Compra', 'purchase_price', 'number', false, false, false, false, true, true, true, 0, 17, 'number', '4.00', 'Último preço pago', NULL, NULL),
 ('f0500000-0000-0000-0000-000000000019', 'e0000000-0000-0000-0000-000000000005', 'created_at', 'Criado em', 'created_at', 'datetime', true, true, true, false, true, false, false, 0, 0, 'datetime', NULL, NULL, NULL, NULL)
 ON CONFLICT (id) DO NOTHING;
 
@@ -408,3 +405,86 @@ BEGIN
     RAISE NOTICE 'Customers can add their own categories using the dynamic CRUD endpoints';
 END $$;
 
+-- =====================================================
+-- PRODUCT PRICES AND COSTS ENTITIES - APPEND-ONLY
+-- =====================================================
+
+-- Register product_prices entity
+INSERT INTO tenant_internal.entities (id, name, display_name, table_name, category, icon, description, allow_create, allow_read, allow_update, allow_delete)
+VALUES (
+    'e0000000-0000-0000-0000-000000000009',
+    'product_price',
+    'Tabela de Preços',
+    'product_prices',
+    'Produtos',
+    'DollarSign',
+    'Histórico de preços de venda (admin pode desativar registros)',
+    true, true, true, true
+);
+
+-- Register product_prices fields
+INSERT INTO tenant_internal.entity_fields (id, entity_id, name, display_name, column_name, data_type, is_required, is_readonly, is_system_field, show_in_list, show_in_detail, show_in_create, show_in_update, list_order, form_order, field_type, placeholder, help_text, validation_regex, default_value) VALUES
+('f0900000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000009', 'id', 'ID', 'id', 'uuid', true, true, true, false, true, false, false, 0, 0, 'text', NULL, NULL, NULL, NULL),
+('f0900000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000009', 'product_id', 'Produto', 'product_id', 'uuid', true, false, false, true, true, true, false, 1, 1, 'select', NULL, 'Selecione o produto', NULL, NULL),
+('f0900000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000009', 'price', 'Preço de Venda', 'price', 'number', true, false, false, true, true, true, false, 2, 2, 'number', '10.00', 'Preço unitário de venda', NULL, NULL),
+('f0900000-0000-0000-0000-000000000004', 'e0000000-0000-0000-0000-000000000009', 'effective_date', 'Data Efetiva', 'effective_date', 'date', true, false, false, true, true, true, false, 3, 3, 'date', NULL, 'Data de início da validade do preço', NULL, NULL),
+('f0900000-0000-0000-0000-000000000005', 'e0000000-0000-0000-0000-000000000009', 'active', 'Ativo', 'active', 'boolean', true, false, false, true, true, true, true, 4, 4, 'checkbox', NULL, 'Ativar/desativar este registro de preço', NULL, 'true'),
+('f0900000-0000-0000-0000-000000000006', 'e0000000-0000-0000-0000-000000000009', 'created_by', 'Registrado por', 'created_by', 'uuid', true, true, false, true, true, false, false, 5, 0, 'text', NULL, 'Usuário que registrou o preço', NULL, NULL),
+('f0900000-0000-0000-0000-000000000007', 'e0000000-0000-0000-0000-000000000009', 'created_at', 'Registrado em', 'created_at', 'datetime', true, true, true, true, true, false, false, 6, 0, 'datetime', NULL, NULL, NULL, NULL)
+ON CONFLICT (id) DO NOTHING;
+
+-- Register product_prices relationships
+INSERT INTO tenant_internal.entity_relationships (id, entity_id, field_id, related_entity_id, relationship_type, foreign_key_column, display_field) VALUES
+('50000000-0000-0000-0000-000000000004', 'e0000000-0000-0000-0000-000000000009', 'f0900000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000005', 'many-to-one', 'product_id', 'description')
+ON CONFLICT (id) DO NOTHING;
+
+-- Register product_prices permissions
+INSERT INTO tenant_internal.entity_permissions (entity_id, role, can_create, can_read, can_update, can_delete) VALUES
+('e0000000-0000-0000-0000-000000000009', 'admin', true, true, true, true),
+('e0000000-0000-0000-0000-000000000009', 'manager', true, true, false, false),
+('e0000000-0000-0000-0000-000000000009', 'operator', false, true, false, false)
+ON CONFLICT (entity_id, role) DO NOTHING;
+
+-- Register product_cost entity
+INSERT INTO tenant_internal.entities (id, name, display_name, table_name, category, icon, description, allow_create, allow_read, allow_update, allow_delete)
+VALUES (
+    'e0000000-0000-0000-0000-000000000010',
+    'product_cost',
+    'Tabela de Custos',
+    'product_costs',
+    'Produtos',
+    'CreditCard',
+    'Histórico de custos de produtos (admin pode desativar registros)',
+    true, true, true, true
+);
+
+-- Register product_costs fields
+INSERT INTO tenant_internal.entity_fields (id, entity_id, name, display_name, column_name, data_type, is_required, is_readonly, is_system_field, show_in_list, show_in_detail, show_in_create, show_in_update, list_order, form_order, field_type, placeholder, help_text, validation_regex, default_value) VALUES
+('f1000000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000010', 'id', 'ID', 'id', 'uuid', true, true, true, false, true, false, false, 0, 0, 'text', NULL, NULL, NULL, NULL),
+('f1000000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000010', 'product_id', 'Produto', 'product_id', 'uuid', true, false, false, true, true, true, false, 1, 1, 'select', NULL, 'Selecione o produto', NULL, NULL),
+('f1000000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000010', 'cost_price', 'Preço de Custo', 'cost_price', 'number', true, false, false, true, true, true, false, 2, 2, 'number', '4.50', 'Custo unitário do produto', NULL, NULL),
+('f1000000-0000-0000-0000-000000000004', 'e0000000-0000-0000-0000-000000000010', 'effective_date', 'Data Efetiva', 'effective_date', 'date', true, false, false, true, true, true, false, 3, 3, 'date', NULL, 'Data de início da validade do custo', NULL, NULL),
+('f1000000-0000-0000-0000-000000000005', 'e0000000-0000-0000-0000-000000000010', 'active', 'Ativo', 'active', 'boolean', true, false, false, true, true, true, true, 4, 4, 'checkbox', NULL, 'Ativar/desativar este registro de custo', NULL, 'true'),
+('f1000000-0000-0000-0000-000000000006', 'e0000000-0000-0000-0000-000000000010', 'created_by', 'Registrado por', 'created_by', 'uuid', true, true, false, true, true, false, false, 5, 0, 'text', NULL, 'Usuário que registrou o custo', NULL, NULL),
+('f1000000-0000-0000-0000-000000000007', 'e0000000-0000-0000-0000-000000000010', 'created_at', 'Registrado em', 'created_at', 'datetime', true, true, true, true, true, false, false, 6, 0, 'datetime', NULL, NULL, NULL, NULL)
+ON CONFLICT (id) DO NOTHING;
+
+-- Register product_costs relationships
+INSERT INTO tenant_internal.entity_relationships (id, entity_id, field_id, related_entity_id, relationship_type, foreign_key_column, display_field) VALUES
+('50000000-0000-0000-0000-000000000005', 'e0000000-0000-0000-0000-000000000010', 'f1000000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000005', 'many-to-one', 'product_id', 'description')
+ON CONFLICT (id) DO NOTHING;
+
+-- Register product_costs permissions
+INSERT INTO tenant_internal.entity_permissions (entity_id, role, can_create, can_read, can_update, can_delete) VALUES
+('e0000000-0000-0000-0000-000000000010', 'admin', true, true, true, true),
+('e0000000-0000-0000-0000-000000000010', 'manager', true, true, false, false),
+('e0000000-0000-0000-0000-000000000010', 'operator', false, true, false, false)
+ON CONFLICT (entity_id, role) DO NOTHING;
+
+-- Log append-only tables completion
+DO $$
+BEGIN
+    RAISE NOTICE '💰 Price and Cost tables seeded successfully';
+    RAISE NOTICE 'Tables: product_prices (soft-delete), product_costs (soft-delete)';
+    RAISE NOTICE 'Admin can update/delete (soft-delete via active flag), others read-only or create-only';
+END $$;

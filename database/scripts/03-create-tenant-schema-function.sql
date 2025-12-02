@@ -381,9 +381,6 @@ BEGIN
             product_origin INTEGER NOT NULL DEFAULT 0,
             item_type INTEGER NOT NULL DEFAULT 0,
             incide_pis_cofins BOOLEAN NOT NULL DEFAULT true,
-            sale_price DECIMAL(15,2) NOT NULL,
-            cost_price DECIMAL(15,2),
-            purchase_price DECIMAL(15,2),
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             
@@ -396,10 +393,7 @@ BEGIN
             CONSTRAINT chk_products_ncm_length CHECK (LENGTH(ncm) = 8),
             CONSTRAINT chk_products_cest_length CHECK (cest IS NULL OR LENGTH(cest) = 7),
             CONSTRAINT chk_products_product_origin CHECK (product_origin BETWEEN 0 AND 8),
-            CONSTRAINT chk_products_item_type CHECK (item_type BETWEEN 0 AND 99),
-            CONSTRAINT chk_products_sale_price CHECK (sale_price >= 0),
-            CONSTRAINT chk_products_cost_price CHECK (cost_price IS NULL OR cost_price >= 0),
-            CONSTRAINT chk_products_purchase_price CHECK (purchase_price IS NULL OR purchase_price >= 0)
+            CONSTRAINT chk_products_item_type CHECK (item_type BETWEEN 0 AND 99)
         )', p_schema_name, p_schema_name, p_schema_name, p_schema_name, p_schema_name);
     
     EXECUTE format('CREATE INDEX IF NOT EXISTS idx_products_internal_code ON %I.products(internal_code)', p_schema_name);
@@ -419,6 +413,78 @@ BEGIN
     EXECUTE format('COMMENT ON TABLE %I.product_subgroups IS ''Product subgroups table for tenant %I''', p_schema_name, p_schema_name);
     EXECUTE format('COMMENT ON TABLE %I.brands IS ''Brands table for tenant %I''', p_schema_name, p_schema_name);
     EXECUTE format('COMMENT ON TABLE %I.products IS ''Products table for tenant %I''', p_schema_name, p_schema_name);
+    
+    -- =====================================================
+    -- PRODUCT PRICES TABLE (Append-only audit trail)
+    -- =====================================================
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.product_prices (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            product_id UUID NOT NULL,
+            price DECIMAL(15,2) NOT NULL,
+            effective_date DATE NOT NULL DEFAULT CURRENT_DATE,
+            active BOOLEAN NOT NULL DEFAULT true,
+            created_by UUID NOT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            
+            CONSTRAINT fk_product_prices_product FOREIGN KEY (product_id) 
+                REFERENCES %I.products(id) ON DELETE RESTRICT,
+            CONSTRAINT fk_product_prices_user FOREIGN KEY (created_by) 
+                REFERENCES %I.users(id) ON DELETE RESTRICT,
+            CONSTRAINT chk_product_prices_price CHECK (price >= 0)
+        )', p_schema_name, p_schema_name, p_schema_name);
+    
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_product_prices_product ON %I.product_prices(product_id)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_product_prices_effective_date ON %I.product_prices(effective_date)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_product_prices_created_by ON %I.product_prices(created_by)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_product_prices_active ON %I.product_prices(active)', p_schema_name);
+    
+    -- Trigger for product_prices updated_at
+    EXECUTE format('
+        DROP TRIGGER IF EXISTS trg_product_prices_updated_at ON %I.product_prices;
+        CREATE TRIGGER trg_product_prices_updated_at
+            BEFORE UPDATE ON %I.product_prices
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column()', p_schema_name, p_schema_name);
+    
+    EXECUTE format('COMMENT ON TABLE %I.product_prices IS ''Product price history (soft-delete enabled) for tenant %I''', p_schema_name, p_schema_name);
+    
+    -- =====================================================
+    -- PRODUCT COSTS TABLE (Soft-delete enabled)
+    -- =====================================================
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.product_costs (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            product_id UUID NOT NULL,
+            cost_price DECIMAL(15,2) NOT NULL,
+            effective_date DATE NOT NULL DEFAULT CURRENT_DATE,
+            active BOOLEAN NOT NULL DEFAULT true,
+            created_by UUID NOT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            
+            CONSTRAINT fk_product_costs_product FOREIGN KEY (product_id) 
+                REFERENCES %I.products(id) ON DELETE RESTRICT,
+            CONSTRAINT fk_product_costs_user FOREIGN KEY (created_by) 
+                REFERENCES %I.users(id) ON DELETE RESTRICT,
+            CONSTRAINT chk_product_costs_price CHECK (cost_price >= 0)
+        )', p_schema_name, p_schema_name, p_schema_name);
+    
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_product_costs_product ON %I.product_costs(product_id)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_product_costs_effective_date ON %I.product_costs(effective_date)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_product_costs_created_by ON %I.product_costs(created_by)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_product_costs_active ON %I.product_costs(active)', p_schema_name);
+    
+    -- Trigger for product_costs updated_at
+    EXECUTE format('
+        DROP TRIGGER IF EXISTS trg_product_costs_updated_at ON %I.product_costs;
+        CREATE TRIGGER trg_product_costs_updated_at
+            BEFORE UPDATE ON %I.product_costs
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column()', p_schema_name, p_schema_name);
+    
+    EXECUTE format('COMMENT ON TABLE %I.product_costs IS ''Product cost history (soft-delete enabled) for tenant %I''', p_schema_name, p_schema_name);
     
 END;
 $$ LANGUAGE plpgsql;
