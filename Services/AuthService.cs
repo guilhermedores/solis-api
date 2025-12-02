@@ -253,4 +253,70 @@ public class AuthService
             }
         };
     }
+
+    /// <summary>
+    /// Obter dados do usuário a partir do token
+    /// </summary>
+    public async Task<UserResponse?> GetUserFromTokenAsync(string token, string tenantSubdomain)
+    {
+        _logger.LogInformation("Buscando dados do usuário autenticado para tenant {Tenant}", tenantSubdomain);
+
+        // Validar token
+        var payload = ValidateToken(token);
+        if (payload == null)
+        {
+            _logger.LogWarning("Token inválido ou expirado");
+            return null;
+        }
+
+        // Verificar se o tenant do token corresponde ao tenant informado
+        if (!payload.Tenant.Equals(tenantSubdomain, StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning("Token do tenant {TokenTenant} não corresponde ao tenant solicitado {RequestTenant}", 
+                payload.Tenant, tenantSubdomain);
+            return null;
+        }
+
+        // Buscar tenant
+        var tenant = await _context.Tenants
+            .FirstOrDefaultAsync(t => t.Subdomain == tenantSubdomain && t.Active);
+
+        if (tenant == null)
+        {
+            _logger.LogWarning("Tenant {Tenant} não encontrado ou inativo", tenantSubdomain);
+            return null;
+        }
+
+        // Conectar ao schema do tenant usando Dapper
+        using var connection = new NpgsqlConnection(GetConnectionString(tenantSubdomain));
+        await connection.OpenAsync();
+
+        // Buscar usuário por ID
+        var user = await connection.QueryFirstOrDefaultAsync<UserDto>(@"
+            SELECT id, name, email, password_hash, role, active, created_at, updated_at
+            FROM users
+            WHERE id = @UserId AND active = true
+        ", new { payload.UserId });
+
+        if (user == null)
+        {
+            _logger.LogWarning("Usuário {UserId} não encontrado ou inativo no tenant {Tenant}", 
+                payload.UserId, tenantSubdomain);
+            return null;
+        }
+
+        _logger.LogInformation("Dados do usuário {UserId} ({Email}) recuperados com sucesso", 
+            user.Id, user.Email);
+
+        return new UserResponse
+        {
+            Id = user.Id,
+            Name = user.Name,
+            Email = user.Email,
+            Role = user.Role,
+            Active = user.Active,
+            CreatedAt = user.Created_At,
+            UpdatedAt = user.Updated_At
+        };
+    }
 }

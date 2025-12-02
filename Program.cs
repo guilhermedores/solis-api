@@ -144,6 +144,9 @@ builder.Services.AddSwaggerGen(c =>
             Array.Empty<string>()
         }
     });
+
+    // Adicionar header X-Tenant-Subdomain para todos os endpoints
+    c.OperationFilter<TenantHeaderOperationFilter>();
 });
 
 var app = builder.Build();

@@ -28,8 +28,8 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- Grant necessary privileges
-GRANT ALL PRIVILEGES ON DATABASE solis_pdv TO solis_user;
+GRANT ALL PRIVILEGES ON DATABASE solis_db TO solis_user;
 GRANT ALL ON SCHEMA public TO solis_user;
 
 -- Create schema for multi-tenant management
-COMMENT ON DATABASE solis_pdv IS 'Solis PDV Multi-tenant Database';
+COMMENT ON DATABASE solis_db IS 'Solis PDV Multi-tenant Database';

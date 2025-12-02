@@ -162,7 +162,7 @@ Write-TestHeader "3. Authentication Tests"
 
 # Login com admin
 $loginResponse = Invoke-ApiTest -Method POST -Endpoint "/api/auth/login" `
-    -Body @{email="admin@internal.com"; password="Admin@123"} `
+    -Body @{email="admin@demo.com"; password="Admin@123"} `
     -TestName "Login with admin credentials"
 
 if ($loginResponse -and $loginResponse.token) {
@@ -172,9 +172,18 @@ if ($loginResponse -and $loginResponse.token) {
 
 # Login com credenciais inválidas (deve falhar)
 Invoke-ApiTest -Method POST -Endpoint "/api/auth/login" `
-    -Body @{email="admin@internal.com"; password="WrongPassword"} `
+    -Body @{email="admin@demo.com"; password="WrongPassword"} `
     -ExpectedStatus 401 `
     -TestName "Login with invalid password fails"
+
+# Obter dados do usuário autenticado
+$meResponse = Invoke-ApiTest -Method GET -Endpoint "/api/auth/me" `
+    -TestName "Get authenticated user data"
+
+if ($meResponse) {
+    Write-Host "  User: $($meResponse.name) ($($meResponse.email))" -ForegroundColor Gray
+    Write-Host "  Role: $($meResponse.role)" -ForegroundColor Gray
+}
 
 # ====================
 # 4. ENTITIES LIST
@@ -225,7 +234,7 @@ if ($users -and $users.data -and $users.data.Count -gt 0) {
 $newUser = Invoke-ApiTest -Method POST -Endpoint "/api/dynamic/user" `
     -Body @{
         name = "Test User $(Get-Random -Maximum 1000)"
-        email = "testuser$(Get-Random -Maximum 10000)@internal.com"
+        email = "testuser$(Get-Random -Maximum 10000)@demo.com"
         password = "Test@123"
         role = "operator"
         active = $true

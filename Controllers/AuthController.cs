@@ -57,4 +57,46 @@ public class AuthController : ControllerBase
 
         return Ok(result);
     }
+
+    /// <summary>
+    /// Me - obter dados do usuário autenticado
+    /// </summary>
+    /// <returns>Dados do usuário autenticado</returns>
+    [HttpGet("me")]
+    public async Task<IActionResult> Me()
+    {
+        // Obter token do header Authorization
+        var authHeader = Request.Headers["Authorization"].FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(authHeader) || !authHeader.StartsWith("Bearer "))
+        {
+            return Unauthorized(new ErrorResponse
+            {
+                Error = "Token de autenticação não fornecido"
+            });
+        }
+
+        var token = authHeader.Substring("Bearer ".Length).Trim();
+        
+        // Obter tenant do header
+        var tenantSubdomain = Request.Headers["X-Tenant-Subdomain"].FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(tenantSubdomain))
+        {
+            return BadRequest(new ErrorResponse
+            {
+                Error = "Header X-Tenant-Subdomain é obrigatório"
+            });
+        }
+
+        var result = await _authService.GetUserFromTokenAsync(token, tenantSubdomain);
+
+        if (result == null)
+        {
+            return Unauthorized(new ErrorResponse
+            {
+                Error = "Token inválido ou usuário não encontrado"
+            });
+        }
+
+        return Ok(result);
+    }
 }
