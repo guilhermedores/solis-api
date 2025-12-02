@@ -77,17 +77,18 @@ public class AuthController : ControllerBase
 
         var token = authHeader.Substring("Bearer ".Length).Trim();
         
-        // Obter tenant do header
-        var tenantSubdomain = Request.Headers["X-Tenant-Subdomain"].FirstOrDefault();
-        if (string.IsNullOrWhiteSpace(tenantSubdomain))
+        // Validar token primeiro para extrair o tenant
+        var payload = _authService.ValidateToken(token);
+        if (payload == null)
         {
-            return BadRequest(new ErrorResponse
+            return Unauthorized(new ErrorResponse
             {
-                Error = "Header X-Tenant-Subdomain é obrigatório"
+                Error = "Token inválido ou expirado"
             });
         }
 
-        var result = await _authService.GetUserFromTokenAsync(token, tenantSubdomain);
+        // Usar o tenant extraído do token
+        var result = await _authService.GetUserFromTokenAsync(token, payload.Tenant);
 
         if (result == null)
         {
