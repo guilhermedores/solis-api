@@ -58,7 +58,7 @@ VALUES (
     '30000000-0000-0000-0000-000000000002',
     'Demo Manager',
     'manager@demo.com',
-    '$2a$12$k8Y1THKCI6TBKgWPKWkSieMYjnJVPvlpXU9XFQO0XQv3c1yYWvKqK',
+    '$2a$12$oF8VexV.1hQUa9Wfrnd.3.RE1vh/Ds/3nMWGiK9fNj1zd/ZKmtMfS',
     'manager',
     true
 )
@@ -70,7 +70,7 @@ VALUES (
     '30000000-0000-0000-0000-000000000003',
     'Demo Operator',
     'operator@demo.com',
-    '$2a$12$3/p7WlTQPqKPWl0eS5K5KOhKvLg8EjqGcGq5K5sJKW5KqJ5K5KqJ5',
+    '$2a$12$JXwG6NyE9xgeqb9F6ng60eMKXPLNSPwJ8xabgiQGqabAC6MHQvtc2',
     'operator',
     true
 )
