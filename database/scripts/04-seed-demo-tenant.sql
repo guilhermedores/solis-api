@@ -556,7 +556,8 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Register product_prices relationships
 INSERT INTO tenant_demo.entity_relationships (id, entity_id, field_id, related_entity_id, relationship_type, foreign_key_column, display_field) VALUES
-('50000000-0000-0000-0000-000000000004', 'e0000000-0000-0000-0000-000000000009', 'f0900000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000005', 'many-to-one', 'product_id', 'description')
+('50000000-0000-0000-0000-000000000004', 'e0000000-0000-0000-0000-000000000009', 'f0900000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000005', 'many-to-one', 'product_id', 'description'),
+('50000000-0000-0000-0000-000000000005', 'e0000000-0000-0000-0000-000000000009', 'f0900000-0000-0000-0000-000000000006', 'e0000000-0000-0000-0000-000000000001', 'many-to-one', 'created_by', 'name')
 ON CONFLICT (id) DO NOTHING;
 
 -- Register product_prices permissions
@@ -592,7 +593,8 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Register product_costs relationships
 INSERT INTO tenant_demo.entity_relationships (id, entity_id, field_id, related_entity_id, relationship_type, foreign_key_column, display_field) VALUES
-('50000000-0000-0000-0000-000000000005', 'e0000000-0000-0000-0000-000000000010', 'f1000000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000005', 'many-to-one', 'product_id', 'description')
+('50000000-0000-0000-0000-000000000006', 'e0000000-0000-0000-0000-000000000010', 'f1000000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000005', 'many-to-one', 'product_id', 'description'),
+('50000000-0000-0000-0000-000000000007', 'e0000000-0000-0000-0000-000000000010', 'f1000000-0000-0000-0000-000000000006', 'e0000000-0000-0000-0000-000000000001', 'many-to-one', 'created_by', 'name')
 ON CONFLICT (id) DO NOTHING;
 
 -- Register product_costs permissions
