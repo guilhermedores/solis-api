@@ -296,13 +296,130 @@ INSERT INTO tenant_demo.brands (id, name) VALUES
 ('30000000-0000-0000-0000-000000000001', 'SEM MARCA')
 ON CONFLICT (id) DO NOTHING;
 
+-- Seed unit of measures (standard units)
+INSERT INTO tenant_demo.unit_of_measures (id, code, name) VALUES
+('35000000-0000-0000-0000-000000000001', 'UN', 'Unidade'),
+('35000000-0000-0000-0000-000000000002', 'KG', 'Quilograma'),
+('35000000-0000-0000-0000-000000000003', 'LT', 'Litro'),
+('35000000-0000-0000-0000-000000000004', 'MT', 'Metro'),
+('35000000-0000-0000-0000-000000000005', 'CX', 'Caixa'),
+('35000000-0000-0000-0000-000000000006', 'PC', 'Peça'),
+('35000000-0000-0000-0000-000000000007', 'PCT', 'Pacote'),
+('35000000-0000-0000-0000-000000000008', 'FD', 'Fardo'),
+('35000000-0000-0000-0000-000000000009', 'SC', 'Saco'),
+('35000000-0000-0000-0000-000000000010', 'DZ', 'Dúzia')
+ON CONFLICT (id) DO NOTHING;
+
+-- Seed example products
+INSERT INTO tenant_demo.products (
+    id, 
+    internal_code, 
+    barcode, 
+    description, 
+    active, 
+    product_group_id, 
+    product_subgroup_id, 
+    brand_id, 
+    unit_of_measure_id, 
+    own_production, 
+    ncm, 
+    cest, 
+    product_origin, 
+    item_type, 
+    incide_pis_cofins
+) VALUES
+(
+    '40000000-0000-0000-0000-000000000001',
+    '000001',
+    '7891234567890',
+    'Produto A',
+    true,
+    '10000000-0000-0000-0000-000000000001', -- GERAL group
+    '20000000-0000-0000-0000-000000000001', -- GERAL subgroup
+    '30000000-0000-0000-0000-000000000001', -- SEM MARCA
+    '35000000-0000-0000-0000-000000000001', -- UN
+    false,
+    '12345678',
+    NULL,
+    0, -- Nacional
+    0, -- Mercadoria para Revenda
+    true
+),
+(
+    '40000000-0000-0000-0000-000000000002',
+    '000002',
+    '7891234567891',
+    'Produto B',
+    true,
+    '10000000-0000-0000-0000-000000000001', -- GERAL group
+    '20000000-0000-0000-0000-000000000001', -- GERAL subgroup
+    '30000000-0000-0000-0000-000000000001', -- SEM MARCA
+    '35000000-0000-0000-0000-000000000001', -- UN
+    false,
+    '87654321',
+    NULL,
+    0, -- Nacional
+    0, -- Mercadoria para Revenda
+    true
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- Seed product prices for example products
+INSERT INTO tenant_demo.product_prices (
+    id,
+    product_id,
+    price,
+    active,
+    created_by
+) VALUES
+(
+    '41000000-0000-0000-0000-000000000001',
+    '40000000-0000-0000-0000-000000000001', -- Produto A
+    29.90,
+    true,
+    '30000000-0000-0000-0000-000000000001' -- Admin user
+),
+(
+    '41000000-0000-0000-0000-000000000002',
+    '40000000-0000-0000-0000-000000000002', -- Produto B
+    49.90,
+    true,
+    '30000000-0000-0000-0000-000000000001' -- Admin user
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- Seed product costs for example products
+INSERT INTO tenant_demo.product_costs (
+    id,
+    product_id,
+    cost_price,
+    active,
+    created_by
+) VALUES
+(
+    '42000000-0000-0000-0000-000000000001',
+    '40000000-0000-0000-0000-000000000001', -- Produto A
+    15.50,
+    true,
+    '30000000-0000-0000-0000-000000000001' -- Admin user
+),
+(
+    '42000000-0000-0000-0000-000000000002',
+    '40000000-0000-0000-0000-000000000002', -- Produto B
+    25.00,
+    true,
+    '30000000-0000-0000-0000-000000000001' -- Admin user
+)
+ON CONFLICT (id) DO NOTHING;
+
 -- Register entities in metadata system
 INSERT INTO tenant_demo.entities (id, name, display_name, table_name, category, icon, description, allow_create, allow_read, allow_update, allow_delete)
 VALUES 
     ('e0000000-0000-0000-0000-000000000005', 'product', 'Produtos', 'products', 'Produtos', 'Package', 'Cadastro de produtos para venda', true, true, true, true),
     ('e0000000-0000-0000-0000-000000000006', 'product_group', 'Grupos de Produto', 'product_groups', 'Produtos', 'FolderTree', 'Categorias principais de produtos', true, true, true, true),
     ('e0000000-0000-0000-0000-000000000007', 'product_subgroup', 'Sub-Grupos de Produto', 'product_subgroups', 'Produtos', 'Folder', 'Subcategorias de produtos', true, true, true, true),
-    ('e0000000-0000-0000-0000-000000000008', 'brand', 'Marcas', 'brands', 'Produtos', 'Tag', 'Fabricantes e marcas de produtos', true, true, true, true)
+    ('e0000000-0000-0000-0000-000000000008', 'brand', 'Marcas', 'brands', 'Produtos', 'Tag', 'Fabricantes e marcas de produtos', true, true, true, true),
+    ('e0000000-0000-0000-0000-000000000013', 'unit_of_measure', 'Unidades de Medida', 'unit_of_measures', 'Produtos', 'Ruler', 'Unidades de medida para produtos', true, true, true, true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Register product entity fields
@@ -316,7 +433,7 @@ INSERT INTO tenant_demo.entity_fields (id, entity_id, name, display_name, column
 ('f0500000-0000-0000-0000-000000000007', 'e0000000-0000-0000-0000-000000000005', 'product_subgroup_id', 'Sub-Grupo de Produto', 'product_subgroup_id', 'uuid', false, false, false, false, true, true, true, 0, 6, 'select', NULL, 'Nível de detalhe adicional na organização', NULL, NULL),
 ('f0500000-0000-0000-0000-000000000008', 'e0000000-0000-0000-0000-000000000005', 'brand_id', 'Fabricante / Marca', 'brand_id', 'uuid', false, false, false, false, true, true, true, 0, 7, 'select', NULL, 'Informação relevante para compras e relatórios de marca', NULL, NULL),
 ('f0500000-0000-0000-0000-000000000009', 'e0000000-0000-0000-0000-000000000005', 'own_production', 'Produção Própria?', 'own_production', 'boolean', true, false, false, false, true, true, true, 0, 8, 'checkbox', NULL, 'Define se é revenda ou fabricação', NULL, 'false'),
-('f0500000-0000-0000-0000-000000000010', 'e0000000-0000-0000-0000-000000000005', 'unit_of_measure', 'Unidade de Medida', 'unit_of_measure', 'string', true, false, false, false, true, true, true, 0, 9, 'select', NULL, 'Padrão: UN, KG, LT', NULL, 'UN'),
+('f0500000-0000-0000-0000-000000000010', 'e0000000-0000-0000-0000-000000000005', 'unit_of_measure_id', 'Unidade de Medida', 'unit_of_measure_id', 'uuid', false, false, false, false, true, true, true, 0, 9, 'select', NULL, 'Selecione a unidade de medida', NULL, NULL),
 ('f0500000-0000-0000-0000-000000000011', 'e0000000-0000-0000-0000-000000000005', 'ncm', 'NCM', 'ncm', 'string', true, false, false, false, true, true, true, 0, 10, 'text', '22021000', 'Código de 8 dígitos', '^[0-9]{8}$', NULL),
 ('f0500000-0000-0000-0000-000000000012', 'e0000000-0000-0000-0000-000000000005', 'cest', 'CEST', 'cest', 'string', false, false, false, false, true, true, true, 0, 11, 'text', '3007000', 'Código de 7 dígitos', '^[0-9]{7}$', NULL),
 ('f0500000-0000-0000-0000-000000000013', 'e0000000-0000-0000-0000-000000000005', 'product_origin', 'Código Origem do Produto', 'product_origin', 'number', true, false, false, false, true, true, true, 0, 12, 'select', NULL, 'Define a origem da mercadoria', NULL, '0'),
@@ -349,23 +466,24 @@ INSERT INTO tenant_demo.entity_fields (id, entity_id, name, display_name, column
 ('f0800000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000008', 'active', 'Ativo', 'active', 'boolean', true, false, false, true, true, true, true, 3, 2, 'checkbox', NULL, NULL, NULL, 'true')
 ON CONFLICT (id) DO NOTHING;
 
+-- Register unit_of_measure entity fields
+INSERT INTO tenant_demo.entity_fields (id, entity_id, name, display_name, column_name, data_type, is_required, is_readonly, is_system_field, show_in_list, show_in_detail, show_in_create, show_in_update, list_order, form_order, field_type, placeholder, help_text, validation_regex, default_value) VALUES
+('f1300000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000013', 'id', 'ID', 'id', 'uuid', true, true, true, false, true, false, false, 0, 0, 'text', NULL, NULL, NULL, NULL),
+('f1300000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000013', 'code', 'Código', 'code', 'string', true, false, false, true, true, true, true, 2, 1, 'text', 'UN', 'Código da unidade (ex: UN, KG, LT)', NULL, NULL),
+('f1300000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000013', 'name', 'Nome', 'name', 'string', true, false, false, true, true, true, true, 3, 2, 'text', 'Unidade', 'Nome completo da unidade', NULL, NULL),
+('f1300000-0000-0000-0000-000000000004', 'e0000000-0000-0000-0000-000000000013', 'active', 'Ativo', 'active', 'boolean', true, false, false, true, true, true, true, 4, 3, 'checkbox', NULL, NULL, NULL, 'true')
+ON CONFLICT (id) DO NOTHING;
+
 -- Register relationships
 INSERT INTO tenant_demo.entity_relationships (id, entity_id, field_id, related_entity_id, relationship_type, foreign_key_column, display_field) VALUES
 ('50000000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000005', 'f0500000-0000-0000-0000-000000000006', 'e0000000-0000-0000-0000-000000000006', 'many-to-one', 'product_group_id', 'name'),
 ('50000000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000005', 'f0500000-0000-0000-0000-000000000007', 'e0000000-0000-0000-0000-000000000007', 'many-to-one', 'product_subgroup_id', 'name'),
 ('50000000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000005', 'f0500000-0000-0000-0000-000000000008', 'e0000000-0000-0000-0000-000000000008', 'many-to-one', 'brand_id', 'name'),
+('50000000-0000-0000-0000-000000000004', 'e0000000-0000-0000-0000-000000000005', 'f0500000-0000-0000-0000-000000000010', 'e0000000-0000-0000-0000-000000000013', 'many-to-one', 'unit_of_measure_id', 'code'),
 ('70000000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000007', 'f0700000-0000-0000-0000-000000000004', 'e0000000-0000-0000-0000-000000000006', 'many-to-one', 'product_group_id', 'name')
 ON CONFLICT (id) DO NOTHING;
 
 -- Register field options for static selects
-INSERT INTO tenant_demo.entity_field_options (field_id, value, label, display_order) 
-SELECT 'f0500000-0000-0000-0000-000000000010'::uuid, 'UN', 'UN', 1 WHERE NOT EXISTS (SELECT 1 FROM tenant_demo.entity_field_options WHERE field_id = 'f0500000-0000-0000-0000-000000000010')
-UNION ALL SELECT 'f0500000-0000-0000-0000-000000000010'::uuid, 'KG', 'KG', 2 WHERE NOT EXISTS (SELECT 1 FROM tenant_demo.entity_field_options WHERE field_id = 'f0500000-0000-0000-0000-000000000010' AND value = 'KG')
-UNION ALL SELECT 'f0500000-0000-0000-0000-000000000010'::uuid, 'LT', 'LT', 3 WHERE NOT EXISTS (SELECT 1 FROM tenant_demo.entity_field_options WHERE field_id = 'f0500000-0000-0000-0000-000000000010' AND value = 'LT')
-UNION ALL SELECT 'f0500000-0000-0000-0000-000000000010'::uuid, 'MT', 'MT', 4 WHERE NOT EXISTS (SELECT 1 FROM tenant_demo.entity_field_options WHERE field_id = 'f0500000-0000-0000-0000-000000000010' AND value = 'MT')
-UNION ALL SELECT 'f0500000-0000-0000-0000-000000000010'::uuid, 'CX', 'CX', 5 WHERE NOT EXISTS (SELECT 1 FROM tenant_demo.entity_field_options WHERE field_id = 'f0500000-0000-0000-0000-000000000010' AND value = 'CX')
-UNION ALL SELECT 'f0500000-0000-0000-0000-000000000010'::uuid, 'PC', 'PC', 6 WHERE NOT EXISTS (SELECT 1 FROM tenant_demo.entity_field_options WHERE field_id = 'f0500000-0000-0000-0000-000000000010' AND value = 'PC');
-
 -- Product origin options
 INSERT INTO tenant_demo.entity_field_options (field_id, value, label, display_order)
 SELECT 'f0500000-0000-0000-0000-000000000013'::uuid, '0', '0 - Nacional', 1 WHERE NOT EXISTS (SELECT 1 FROM tenant_demo.entity_field_options WHERE field_id = 'f0500000-0000-0000-0000-000000000013' AND value = '0')
@@ -393,15 +511,18 @@ INSERT INTO tenant_demo.entity_permissions (entity_id, role, can_create, can_rea
 ('e0000000-0000-0000-0000-000000000007', 'operator', false, true, false, false),
 ('e0000000-0000-0000-0000-000000000008', 'admin', true, true, true, true),
 ('e0000000-0000-0000-0000-000000000008', 'manager', true, true, true, false),
-('e0000000-0000-0000-0000-000000000008', 'operator', false, true, false, false)
+('e0000000-0000-0000-0000-000000000008', 'operator', false, true, false, false),
+('e0000000-0000-0000-0000-000000000013', 'admin', true, true, true, true),
+('e0000000-0000-0000-0000-000000000013', 'manager', true, true, true, false),
+('e0000000-0000-0000-0000-000000000013', 'operator', false, true, false, false)
 ON CONFLICT (entity_id, role) DO NOTHING;
 
 -- Log products module completion
 DO $$
 BEGIN
     RAISE NOTICE '📦 Products module seeded successfully';
-    RAISE NOTICE 'Default values: 1 GERAL group, 1 GERAL subgroup, 1 SEM MARCA brand';
-    RAISE NOTICE 'Entities: product, product_group, product_subgroup, brand';
+    RAISE NOTICE 'Default values: 1 GERAL group, 1 GERAL subgroup, 1 SEM MARCA brand, 10 unit of measures';
+    RAISE NOTICE 'Entities: product, product_group, product_subgroup, brand, unit_of_measure';
     RAISE NOTICE 'Customers can add their own categories using the dynamic CRUD endpoints';
 END $$;
 

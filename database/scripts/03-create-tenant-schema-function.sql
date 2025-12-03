@@ -360,6 +360,29 @@ BEGIN
             FOR EACH ROW
             EXECUTE FUNCTION update_updated_at_column()', p_schema_name, p_schema_name);
     
+    -- Create unit_of_measures table
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.unit_of_measures (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            code VARCHAR(10) UNIQUE NOT NULL,
+            name VARCHAR(100) NOT NULL,
+            active BOOLEAN NOT NULL DEFAULT true,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )', p_schema_name);
+    
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_unit_of_measures_code ON %I.unit_of_measures(code)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_unit_of_measures_active ON %I.unit_of_measures(active)', p_schema_name);
+    
+    EXECUTE format('
+        DROP TRIGGER IF EXISTS trg_unit_of_measures_updated_at ON %I.unit_of_measures;
+        CREATE TRIGGER trg_unit_of_measures_updated_at
+            BEFORE UPDATE ON %I.unit_of_measures
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column()', p_schema_name, p_schema_name);
+    
+    EXECUTE format('COMMENT ON TABLE %I.unit_of_measures IS ''Unit of measures table for tenant %I''', p_schema_name, p_schema_name);
+    
     -- Create products table
     -- Create sequence for internal_code
     EXECUTE format('CREATE SEQUENCE IF NOT EXISTS %I.products_internal_code_seq START 1', p_schema_name);
@@ -374,8 +397,8 @@ BEGIN
             product_group_id UUID,
             product_subgroup_id UUID,
             brand_id UUID,
+            unit_of_measure_id UUID,
             own_production BOOLEAN NOT NULL DEFAULT false,
-            unit_of_measure VARCHAR(10) NOT NULL DEFAULT ''UN'',
             ncm VARCHAR(8) NOT NULL,
             cest VARCHAR(7),
             product_origin INTEGER NOT NULL DEFAULT 0,
@@ -390,11 +413,13 @@ BEGIN
                 REFERENCES %I.product_subgroups(id) ON DELETE RESTRICT,
             CONSTRAINT fk_products_brand FOREIGN KEY (brand_id) 
                 REFERENCES %I.brands(id) ON DELETE RESTRICT,
+            CONSTRAINT fk_products_unit_of_measure FOREIGN KEY (unit_of_measure_id) 
+                REFERENCES %I.unit_of_measures(id) ON DELETE RESTRICT,
             CONSTRAINT chk_products_ncm_length CHECK (LENGTH(ncm) = 8),
             CONSTRAINT chk_products_cest_length CHECK (cest IS NULL OR LENGTH(cest) = 7),
             CONSTRAINT chk_products_product_origin CHECK (product_origin BETWEEN 0 AND 8),
             CONSTRAINT chk_products_item_type CHECK (item_type BETWEEN 0 AND 99)
-        )', p_schema_name, p_schema_name, p_schema_name, p_schema_name, p_schema_name);
+        )', p_schema_name, p_schema_name, p_schema_name, p_schema_name, p_schema_name, p_schema_name, p_schema_name);
     
     EXECUTE format('CREATE INDEX IF NOT EXISTS idx_products_internal_code ON %I.products(internal_code)', p_schema_name);
     EXECUTE format('CREATE INDEX IF NOT EXISTS idx_products_barcode ON %I.products(barcode)', p_schema_name);
