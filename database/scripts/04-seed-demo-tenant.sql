@@ -731,16 +731,16 @@ ON CONFLICT (name) DO NOTHING;
 
 -- Register fields for products report
 INSERT INTO tenant_demo.report_fields (id, report_id, name, display_name, field_type, data_source, format_mask, display_order, visible, sortable, filterable) VALUES
-('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'code', 'Código', 'string', 'code', NULL, 1, true, true, true),
-('20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001', 'barcode', 'Código de Barras', 'string', 'barcode', NULL, 2, true, true, true),
-('20000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000001', 'description', 'Descrição', 'string', 'description', NULL, 3, true, true, true),
-('20000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000001', 'unit_code', 'Unidade', 'string', 'unit_code', NULL, 4, true, true, false),
-('20000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000001', 'sale_price', 'Preço de Venda', 'decimal', 'sale_price', NULL, 5, true, true, true),
-('20000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-000000000001', 'cost_price', 'Custo', 'decimal', 'cost_price', NULL, 6, true, true, true),
-('20000000-0000-0000-0000-000000000007', '10000000-0000-0000-0000-000000000001', 'margin_percent', 'Margem %', 'decimal', 'margin_percent', NULL, 7, true, true, true),
-('20000000-0000-0000-0000-000000000008', '10000000-0000-0000-0000-000000000001', 'brand_name', 'Marca', 'string', 'brand_name', NULL, 8, true, true, true),
-('20000000-0000-0000-0000-000000000009', '10000000-0000-0000-0000-000000000001', 'group_name', 'Grupo', 'string', 'group_name', NULL, 9, true, true, true),
-('20000000-0000-0000-0000-000000000010', '10000000-0000-0000-0000-000000000001', 'active', 'Ativo', 'boolean', 'active', NULL, 10, true, true, true)
+('20000000-0000-0000-0000-000000000010', '10000000-0000-0000-0000-000000000001', 'active', 'Ativo', 'boolean', 'active', NULL, 1, true, true, true),
+('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'code', 'Código', 'string', 'code', NULL, 2, true, true, true),
+('20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001', 'barcode', 'Código de Barras', 'string', 'barcode', NULL, 3, true, true, true),
+('20000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000001', 'description', 'Descrição', 'string', 'description', NULL, 4, true, true, true),
+('20000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000001', 'unit_code', 'Unidade', 'string', 'unit_code', NULL, 5, true, true, false),
+('20000000-0000-0000-0000-000000000008', '10000000-0000-0000-0000-000000000001', 'brand_name', 'Marca', 'string', 'brand_name', NULL, 6, true, true, true),
+('20000000-0000-0000-0000-000000000009', '10000000-0000-0000-0000-000000000001', 'group_name', 'Grupo', 'string', 'group_name', NULL, 7, true, true, true),
+('20000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000001', 'sale_price', 'Preço de Venda', 'decimal', 'sale_price', NULL, 8, true, true, true),
+('20000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-000000000001', 'cost_price', 'Custo', 'decimal', 'cost_price', NULL, 9, true, true, true),
+('20000000-0000-0000-0000-000000000007', '10000000-0000-0000-0000-000000000001', 'margin_percent', 'Margem %', 'decimal', 'margin_percent', NULL, 10, true, true, true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Register filters for products report
