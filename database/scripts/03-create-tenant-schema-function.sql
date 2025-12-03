@@ -243,6 +243,88 @@ BEGIN
     
     EXECUTE format('CREATE INDEX IF NOT EXISTS idx_entity_field_options_field ON %I.entity_field_options(field_id)', p_schema_name);
     
+    -- Reports metadata table
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.reports (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            name VARCHAR(100) NOT NULL UNIQUE,
+            display_name VARCHAR(200) NOT NULL,
+            description TEXT,
+            category VARCHAR(100),
+            base_table VARCHAR(100) NOT NULL,
+            base_query TEXT,
+            active BOOLEAN NOT NULL DEFAULT true,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )', p_schema_name);
+    
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_reports_name ON %I.reports(name)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_reports_category ON %I.reports(category)', p_schema_name);
+    
+    -- Report fields table
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.report_fields (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            report_id UUID NOT NULL,
+            name VARCHAR(100) NOT NULL,
+            display_name VARCHAR(200) NOT NULL,
+            field_type VARCHAR(50) NOT NULL,
+            data_source VARCHAR(200) NOT NULL,
+            format_mask VARCHAR(50),
+            aggregation VARCHAR(20),
+            display_order INTEGER NOT NULL DEFAULT 0,
+            visible BOOLEAN NOT NULL DEFAULT true,
+            sortable BOOLEAN NOT NULL DEFAULT true,
+            filterable BOOLEAN NOT NULL DEFAULT true,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            
+            CONSTRAINT fk_report_fields_report FOREIGN KEY (report_id) 
+                REFERENCES %I.reports(id) ON DELETE CASCADE,
+            CONSTRAINT chk_report_fields_type CHECK (field_type IN (''string'', ''number'', ''decimal'', ''date'', ''datetime'', ''boolean'', ''uuid'')),
+            CONSTRAINT chk_report_fields_aggregation CHECK (aggregation IS NULL OR aggregation IN (''sum'', ''avg'', ''count'', ''min'', ''max''))
+        )', p_schema_name, p_schema_name);
+    
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_report_fields_report ON %I.report_fields(report_id)', p_schema_name);
+    
+    -- Report filters table
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.report_filters (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            report_id UUID NOT NULL,
+            name VARCHAR(100) NOT NULL,
+            display_name VARCHAR(200) NOT NULL,
+            field_type VARCHAR(50) NOT NULL,
+            filter_type VARCHAR(50) NOT NULL,
+            data_source VARCHAR(200) NOT NULL,
+            default_value TEXT,
+            required BOOLEAN NOT NULL DEFAULT false,
+            display_order INTEGER NOT NULL DEFAULT 0,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            
+            CONSTRAINT fk_report_filters_report FOREIGN KEY (report_id) 
+                REFERENCES %I.reports(id) ON DELETE CASCADE,
+            CONSTRAINT chk_report_filters_field_type CHECK (field_type IN (''string'', ''number'', ''decimal'', ''date'', ''datetime'', ''boolean'', ''uuid'', ''select'')),
+            CONSTRAINT chk_report_filters_filter_type CHECK (filter_type IN (''equals'', ''not_equals'', ''contains'', ''starts_with'', ''ends_with'', ''greater_than'', ''less_than'', ''between'', ''in'', ''is_null'', ''is_not_null''))
+        )', p_schema_name, p_schema_name);
+    
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_report_filters_report ON %I.report_filters(report_id)', p_schema_name);
+    
+    -- Report filter options table
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.report_filter_options (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            filter_id UUID NOT NULL,
+            value VARCHAR(100) NOT NULL,
+            label VARCHAR(200) NOT NULL,
+            display_order INTEGER NOT NULL DEFAULT 0,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            
+            CONSTRAINT fk_report_filter_options_filter FOREIGN KEY (filter_id) 
+                REFERENCES %I.report_filters(id) ON DELETE CASCADE
+        )', p_schema_name, p_schema_name);
+    
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_report_filter_options_filter ON %I.report_filter_options(filter_id)', p_schema_name);
+    
     -- Entity permissions table
     EXECUTE format('
         CREATE TABLE IF NOT EXISTS %I.entity_permissions (

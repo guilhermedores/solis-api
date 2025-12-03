@@ -107,9 +107,13 @@ if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("JWT_SECRET")))
 builder.Services.AddDbContext<SolisDbContext>(options =>
     options.UseNpgsql(connectionString));
 
+// Registrar IHttpContextAccessor (necessário para ReportService)
+builder.Services.AddHttpContextAccessor();
+
 // Registrar serviços
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<DynamicCrudService>();
+builder.Services.AddScoped<ReportService>();
 
 // Health Checks - sem DbContext check para evitar problemas de scoping
 builder.Services.AddHealthChecks();

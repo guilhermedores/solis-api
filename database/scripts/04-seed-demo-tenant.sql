@@ -710,3 +710,52 @@ BEGIN
     RAISE NOTICE 'Default Payment Method: À Vista (Dinheiro)';
     RAISE NOTICE 'Entities: payment_type (read-only), payment_method (full CRUD)';
 END $$;
+
+-- =====================================================
+-- REPORTS MODULE
+-- =====================================================
+
+-- Register example report: Products List
+INSERT INTO tenant_demo.reports (id, name, display_name, description, category, base_table, base_query, active)
+VALUES (
+    '10000000-0000-0000-0000-000000000001',
+    'products_list',
+    'Relatório de Produtos',
+    'Lista completa de produtos cadastrados com preços e custos',
+    'Produtos',
+    'products',
+    'SELECT p.id, p.internal_code as code, p.barcode, p.description, p.active, u.code as unit_code, b.name as brand_name, pg.name as group_name FROM products p LEFT JOIN unit_of_measures u ON p.unit_of_measure_id = u.id LEFT JOIN brands b ON p.brand_id = b.id LEFT JOIN product_groups pg ON p.product_group_id = pg.id',
+    true
+)
+ON CONFLICT (name) DO NOTHING;
+
+-- Register fields for products report
+INSERT INTO tenant_demo.report_fields (id, report_id, name, display_name, field_type, data_source, format_mask, display_order, visible, sortable, filterable) VALUES
+('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'code', 'Código', 'string', 'code', NULL, 1, true, true, true),
+('20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001', 'barcode', 'Código de Barras', 'string', 'barcode', NULL, 2, true, true, true),
+('20000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000001', 'description', 'Descrição', 'string', 'description', NULL, 3, true, true, true),
+('20000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000001', 'unit_code', 'Unidade', 'string', 'unit_code', NULL, 4, true, true, false),
+('20000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000001', 'brand_name', 'Marca', 'string', 'brand_name', NULL, 5, true, true, true),
+('20000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-000000000001', 'group_name', 'Grupo', 'string', 'group_name', NULL, 6, true, true, true),
+('20000000-0000-0000-0000-000000000007', '10000000-0000-0000-0000-000000000001', 'active', 'Ativo', 'boolean', 'active', NULL, 7, true, true, true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Register filters for products report
+INSERT INTO tenant_demo.report_filters (id, report_id, name, display_name, field_type, filter_type, data_source, required, display_order) VALUES
+('30000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'active', 'Status', 'select', 'equals', 'active', false, 1),
+('30000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001', 'description', 'Descrição', 'string', 'contains', 'description', false, 2),
+('30000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000001', 'code', 'Código', 'string', 'contains', 'code', false, 3)
+ON CONFLICT (id) DO NOTHING;
+
+-- Register filter options for active filter
+INSERT INTO tenant_demo.report_filter_options (id, filter_id, value, label, display_order) VALUES
+('40000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', 'true', 'Ativo', 1),
+('40000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000001', 'false', 'Inativo', 2)
+ON CONFLICT (id) DO NOTHING;
+
+-- Log reports module completion
+DO $$
+BEGIN
+    RAISE NOTICE '📊 Reports module seeded successfully';
+    RAISE NOTICE 'Example Report: Products List with filters and export capabilities';
+END $$;

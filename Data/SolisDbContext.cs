@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SolisApi.Models;
+using SolisApi.Models.Reports;
 
 namespace SolisApi.Data;
 
@@ -13,6 +14,12 @@ public class SolisDbContext : DbContext
     }
 
     public DbSet<Tenant> Tenants { get; set; } = null!;
+    
+    // Reports
+    public DbSet<Report> Reports { get; set; } = null!;
+    public DbSet<ReportField> ReportFields { get; set; } = null!;
+    public DbSet<ReportFilter> ReportFilters { get; set; } = null!;
+    public DbSet<ReportFilterOption> ReportFilterOptions { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
