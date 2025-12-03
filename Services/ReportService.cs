@@ -153,7 +153,11 @@ public class ReportService
         foreach (var kvp in filters)
         {
             var filter = report.Filters.FirstOrDefault(f => f.Name == kvp.Key);
-            if (filter == null || kvp.Value == null || string.IsNullOrEmpty(kvp.Value.ToString())) continue;
+            
+            if (filter == null || kvp.Value == null || string.IsNullOrEmpty(kvp.Value.ToString()))
+            {
+                continue;
+            }
 
             var condition = BuildWhereCondition(filter, kvp.Value, parameters, ref paramIndex);
             if (!string.IsNullOrEmpty(condition))
@@ -188,14 +192,44 @@ public class ReportService
         var fieldName = filter.DataSource;
         var paramName = $"p{paramIndex}";
 
-        // Convert string values to appropriate types based on field type
-        var convertedValue = filter.FieldType switch
+        // Extract value from JsonElement if needed
+        string? stringValue = value switch
         {
-            "boolean" => value.ToString()?.ToLower() == "true",
-            "number" => int.TryParse(value.ToString(), out var intVal) ? intVal : value,
-            "decimal" => decimal.TryParse(value.ToString(), out var decVal) ? decVal : value,
-            _ => value
+            System.Text.Json.JsonElement jsonElement => jsonElement.ValueKind switch
+            {
+                System.Text.Json.JsonValueKind.String => jsonElement.GetString(),
+                System.Text.Json.JsonValueKind.Number => jsonElement.ToString(),
+                System.Text.Json.JsonValueKind.True => "true",
+                System.Text.Json.JsonValueKind.False => "false",
+                System.Text.Json.JsonValueKind.Null => null,
+                _ => jsonElement.ToString()
+            },
+            _ => value?.ToString()
         };
+
+        if (string.IsNullOrEmpty(stringValue))
+        {
+            return "";
+        }
+
+        // Convert string values to appropriate types based on field type
+        // For select filters with boolean options, check the actual data type
+        object convertedValue;
+        
+        // Check if it's a boolean value (true/false strings)
+        if (stringValue.ToLower() == "true" || stringValue.ToLower() == "false")
+        {
+            convertedValue = stringValue.ToLower() == "true";
+        }
+        else
+        {
+            convertedValue = filter.FieldType switch
+            {
+                "number" => int.TryParse(stringValue, out var intVal) ? intVal : stringValue,
+                "decimal" => decimal.TryParse(stringValue, out var decVal) ? decVal : stringValue,
+                _ => stringValue
+            };
+        }
 
         switch (filter.FilterType)
         {
@@ -205,7 +239,7 @@ public class ReportService
                 return $"{fieldName} = @{paramName}";
 
             case "contains":
-                parameters.Add(paramName, $"%{value}%");
+                parameters.Add(paramName, $"%{stringValue}%");
                 paramIndex++;
                 return $"{fieldName} ILIKE @{paramName}";
 

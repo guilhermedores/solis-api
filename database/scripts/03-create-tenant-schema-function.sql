@@ -195,7 +195,7 @@ BEGIN
             CONSTRAINT fk_entity_fields_entity FOREIGN KEY (entity_id) 
                 REFERENCES %I.entities(id) ON DELETE CASCADE,
             CONSTRAINT chk_entity_fields_data_type CHECK (data_type IN (''string'', ''number'', ''boolean'', ''date'', ''datetime'', ''uuid'', ''json'', ''text'')),
-            CONSTRAINT chk_entity_fields_field_type CHECK (field_type IN (''text'', ''textarea'', ''number'', ''email'', ''password'', ''select'', ''multiselect'', ''date'', ''datetime'', ''checkbox'', ''file'', ''image''))
+            CONSTRAINT chk_entity_fields_field_type CHECK (field_type IN (''text'', ''textarea'', ''number'', ''decimal'', ''email'', ''password'', ''select'', ''multiselect'', ''date'', ''datetime'', ''boolean'', ''checkbox'', ''file'', ''image'', ''url''))
         )', p_schema_name, p_schema_name);
     
     EXECUTE format('CREATE INDEX IF NOT EXISTS idx_entity_fields_entity ON %I.entity_fields(entity_id)', p_schema_name);

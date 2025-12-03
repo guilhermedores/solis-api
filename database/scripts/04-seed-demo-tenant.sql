@@ -547,7 +547,7 @@ VALUES (
 INSERT INTO tenant_demo.entity_fields (id, entity_id, name, display_name, column_name, data_type, is_required, is_readonly, is_system_field, show_in_list, show_in_detail, show_in_create, show_in_update, list_order, form_order, field_type, placeholder, help_text, validation_regex, default_value) VALUES
 ('f0900000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000009', 'id', 'ID', 'id', 'uuid', true, true, true, false, true, false, false, 0, 0, 'text', NULL, NULL, NULL, NULL),
 ('f0900000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000009', 'product_id', 'Produto', 'product_id', 'uuid', true, false, false, true, true, true, false, 1, 1, 'select', NULL, 'Selecione o produto', NULL, NULL),
-('f0900000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000009', 'price', 'Preço de Venda', 'price', 'number', true, false, false, true, true, true, false, 2, 2, 'number', '10.00', 'Preço unitário de venda', NULL, NULL),
+('f0900000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000009', 'price', 'Preço de Venda', 'price', 'number', true, false, false, true, true, true, false, 2, 2, 'decimal', '10.00', 'Preço unitário de venda', NULL, NULL),
 ('f0900000-0000-0000-0000-000000000004', 'e0000000-0000-0000-0000-000000000009', 'effective_date', 'Data Efetiva', 'effective_date', 'date', true, false, false, true, true, true, false, 3, 3, 'date', NULL, 'Data de início da validade do preço', NULL, NULL),
 ('f0900000-0000-0000-0000-000000000005', 'e0000000-0000-0000-0000-000000000009', 'active', 'Ativo', 'active', 'boolean', true, false, false, true, true, true, true, 4, 4, 'checkbox', NULL, 'Ativar/desativar este registro de preço', NULL, 'true'),
 ('f0900000-0000-0000-0000-000000000006', 'e0000000-0000-0000-0000-000000000009', 'created_by', 'Registrado por', 'created_by', 'uuid', true, true, false, true, true, false, false, 5, 0, 'text', NULL, 'Usuário que registrou o preço', NULL, NULL),
@@ -556,8 +556,8 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Register product_prices relationships
 INSERT INTO tenant_demo.entity_relationships (id, entity_id, field_id, related_entity_id, relationship_type, foreign_key_column, display_field) VALUES
-('50000000-0000-0000-0000-000000000004', 'e0000000-0000-0000-0000-000000000009', 'f0900000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000005', 'many-to-one', 'product_id', 'description'),
-('50000000-0000-0000-0000-000000000005', 'e0000000-0000-0000-0000-000000000009', 'f0900000-0000-0000-0000-000000000006', 'e0000000-0000-0000-0000-000000000001', 'many-to-one', 'created_by', 'name')
+('50000000-0000-0000-0000-000000000008', 'e0000000-0000-0000-0000-000000000009', 'f0900000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000005', 'many-to-one', 'product_id', 'description'),
+('50000000-0000-0000-0000-000000000009', 'e0000000-0000-0000-0000-000000000009', 'f0900000-0000-0000-0000-000000000006', 'e0000000-0000-0000-0000-000000000001', 'many-to-one', 'created_by', 'name')
 ON CONFLICT (id) DO NOTHING;
 
 -- Register product_prices permissions
@@ -584,7 +584,7 @@ VALUES (
 INSERT INTO tenant_demo.entity_fields (id, entity_id, name, display_name, column_name, data_type, is_required, is_readonly, is_system_field, show_in_list, show_in_detail, show_in_create, show_in_update, list_order, form_order, field_type, placeholder, help_text, validation_regex, default_value) VALUES
 ('f1000000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000010', 'id', 'ID', 'id', 'uuid', true, true, true, false, true, false, false, 0, 0, 'text', NULL, NULL, NULL, NULL),
 ('f1000000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000010', 'product_id', 'Produto', 'product_id', 'uuid', true, false, false, true, true, true, false, 1, 1, 'select', NULL, 'Selecione o produto', NULL, NULL),
-('f1000000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000010', 'cost_price', 'Preço de Custo', 'cost_price', 'number', true, false, false, true, true, true, false, 2, 2, 'number', '4.50', 'Custo unitário do produto', NULL, NULL),
+('f1000000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000010', 'cost_price', 'Preço de Custo', 'cost_price', 'number', true, false, false, true, true, true, false, 2, 2, 'decimal', '4.50', 'Custo unitário do produto', NULL, NULL),
 ('f1000000-0000-0000-0000-000000000004', 'e0000000-0000-0000-0000-000000000010', 'effective_date', 'Data Efetiva', 'effective_date', 'date', true, false, false, true, true, true, false, 3, 3, 'date', NULL, 'Data de início da validade do custo', NULL, NULL),
 ('f1000000-0000-0000-0000-000000000005', 'e0000000-0000-0000-0000-000000000010', 'active', 'Ativo', 'active', 'boolean', true, false, false, true, true, true, true, 4, 4, 'checkbox', NULL, 'Ativar/desativar este registro de custo', NULL, 'true'),
 ('f1000000-0000-0000-0000-000000000006', 'e0000000-0000-0000-0000-000000000010', 'created_by', 'Registrado por', 'created_by', 'uuid', true, true, false, true, true, false, false, 5, 0, 'text', NULL, 'Usuário que registrou o custo', NULL, NULL),
@@ -593,8 +593,8 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Register product_costs relationships
 INSERT INTO tenant_demo.entity_relationships (id, entity_id, field_id, related_entity_id, relationship_type, foreign_key_column, display_field) VALUES
-('50000000-0000-0000-0000-000000000006', 'e0000000-0000-0000-0000-000000000010', 'f1000000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000005', 'many-to-one', 'product_id', 'description'),
-('50000000-0000-0000-0000-000000000007', 'e0000000-0000-0000-0000-000000000010', 'f1000000-0000-0000-0000-000000000006', 'e0000000-0000-0000-0000-000000000001', 'many-to-one', 'created_by', 'name')
+('50000000-0000-0000-0000-000000000010', 'e0000000-0000-0000-0000-000000000010', 'f1000000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000005', 'many-to-one', 'product_id', 'description'),
+('50000000-0000-0000-0000-000000000011', 'e0000000-0000-0000-0000-000000000010', 'f1000000-0000-0000-0000-000000000006', 'e0000000-0000-0000-0000-000000000001', 'many-to-one', 'created_by', 'name')
 ON CONFLICT (id) DO NOTHING;
 
 -- Register product_costs permissions
@@ -681,7 +681,7 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Register payment_method relationships
 INSERT INTO tenant_demo.entity_relationships (id, entity_id, field_id, related_entity_id, relationship_type, foreign_key_column, display_field) VALUES
-('50000000-0000-0000-0000-000000000006', 'e0000000-0000-0000-0000-000000000012', 'f1200000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000011', 'many-to-one', 'payment_type_id', 'description')
+('50000000-0000-0000-0000-000000000012', 'e0000000-0000-0000-0000-000000000012', 'f1200000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000011', 'many-to-one', 'payment_type_id', 'description')
 ON CONFLICT (id) DO NOTHING;
 
 -- Register payment_method permissions (full CRUD for admin, create/read for manager, read-only for operator)
@@ -724,7 +724,7 @@ VALUES (
     'Lista completa de produtos cadastrados com preços e custos',
     'Produtos',
     'products',
-    'SELECT p.id, p.internal_code as code, p.barcode, p.description, p.active, u.code as unit_code, b.name as brand_name, pg.name as group_name FROM products p LEFT JOIN unit_of_measures u ON p.unit_of_measure_id = u.id LEFT JOIN brands b ON p.brand_id = b.id LEFT JOIN product_groups pg ON p.product_group_id = pg.id',
+    'SELECT p.id, p.internal_code as code, p.barcode, p.description, p.active, u.code as unit_code, b.name as brand_name, pg.name as group_name, COALESCE(latest_price.price, 0) as sale_price, COALESCE(latest_cost.cost_price, 0) as cost_price, CASE WHEN COALESCE(latest_price.price, 0) > 0 THEN ROUND(((latest_price.price - COALESCE(latest_cost.cost_price, 0)) / latest_price.price * 100)::numeric, 2) ELSE 0 END as margin_percent FROM products p LEFT JOIN unit_of_measures u ON p.unit_of_measure_id = u.id LEFT JOIN brands b ON p.brand_id = b.id LEFT JOIN product_groups pg ON p.product_group_id = pg.id LEFT JOIN LATERAL (SELECT price FROM product_prices WHERE product_id = p.id AND active = true ORDER BY effective_date DESC, created_at DESC LIMIT 1) latest_price ON true LEFT JOIN LATERAL (SELECT cost_price FROM product_costs WHERE product_id = p.id AND active = true ORDER BY effective_date DESC, created_at DESC LIMIT 1) latest_cost ON true',
     true
 )
 ON CONFLICT (name) DO NOTHING;
@@ -735,9 +735,12 @@ INSERT INTO tenant_demo.report_fields (id, report_id, name, display_name, field_
 ('20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001', 'barcode', 'Código de Barras', 'string', 'barcode', NULL, 2, true, true, true),
 ('20000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000001', 'description', 'Descrição', 'string', 'description', NULL, 3, true, true, true),
 ('20000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000001', 'unit_code', 'Unidade', 'string', 'unit_code', NULL, 4, true, true, false),
-('20000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000001', 'brand_name', 'Marca', 'string', 'brand_name', NULL, 5, true, true, true),
-('20000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-000000000001', 'group_name', 'Grupo', 'string', 'group_name', NULL, 6, true, true, true),
-('20000000-0000-0000-0000-000000000007', '10000000-0000-0000-0000-000000000001', 'active', 'Ativo', 'boolean', 'active', NULL, 7, true, true, true)
+('20000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000001', 'sale_price', 'Preço de Venda', 'decimal', 'sale_price', NULL, 5, true, true, true),
+('20000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-000000000001', 'cost_price', 'Custo', 'decimal', 'cost_price', NULL, 6, true, true, true),
+('20000000-0000-0000-0000-000000000007', '10000000-0000-0000-0000-000000000001', 'margin_percent', 'Margem %', 'decimal', 'margin_percent', NULL, 7, true, true, true),
+('20000000-0000-0000-0000-000000000008', '10000000-0000-0000-0000-000000000001', 'brand_name', 'Marca', 'string', 'brand_name', NULL, 8, true, true, true),
+('20000000-0000-0000-0000-000000000009', '10000000-0000-0000-0000-000000000001', 'group_name', 'Grupo', 'string', 'group_name', NULL, 9, true, true, true),
+('20000000-0000-0000-0000-000000000010', '10000000-0000-0000-0000-000000000001', 'active', 'Ativo', 'boolean', 'active', NULL, 10, true, true, true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Register filters for products report
