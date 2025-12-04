@@ -108,6 +108,32 @@ VALUES (
 )
 ON CONFLICT (cnpj) DO NOTHING;
 
+-- Seed demo store
+INSERT INTO tenant_demo.stores (
+    id, code, name, company_id, active,
+    address_zip_code, address_street, address_number, address_complement,
+    address_district, address_city, address_state,
+    contact_phone, contact_mobile, contact_email
+)
+VALUES (
+    '45000000-0000-0000-0000-000000000001',
+    '001',
+    'Loja Principal',
+    '40000000-0000-0000-0000-000000000001',
+    true,
+    '01310100',
+    'Avenida Paulista',
+    '1000',
+    'Térreo',
+    'Bela Vista',
+    'São Paulo',
+    'SP',
+    '1133334444',
+    '11999998888',
+    'loja@demo.com'
+)
+ON CONFLICT (code) DO NOTHING;
+
 -- Log completion
 DO $$
 BEGIN
@@ -195,6 +221,52 @@ VALUES
     ('e0000000-0000-0000-0000-000000000002', 'manager', true, true, true, false),
     ('e0000000-0000-0000-0000-000000000002', 'operator', false, true, false, false);
 
+-- =====================================================
+-- STORES MODULE
+-- =====================================================
+
+-- Insert Store entity
+INSERT INTO tenant_demo.entities (id, name, display_name, table_name, category, icon, description, allow_create, allow_read, allow_update, allow_delete)
+VALUES (
+    'e0000000-0000-0000-0000-000000000014',
+    'store',
+    'Lojas',
+    'stores',
+    'Cadastros',
+    'store',
+    'Gerenciamento de lojas/filiais',
+    true, true, true, true
+);
+
+-- Insert Store fields
+INSERT INTO tenant_demo.entity_fields (entity_id, name, display_name, column_name, data_type, field_type, max_length, is_required, is_unique, show_in_list, show_in_create, show_in_update, list_order, form_order)
+VALUES
+    ('e0000000-0000-0000-0000-000000000014', 'id', 'ID', 'id', 'uuid', 'text', NULL, true, false, false, false, false, 0, 0),
+    ('e0000000-0000-0000-0000-000000000014', 'code', 'Código', 'code', 'string', 'text', 20, true, true, true, true, true, 1, 1),
+    ('e0000000-0000-0000-0000-000000000014', 'name', 'Nome', 'name', 'string', 'text', 200, true, false, true, true, true, 2, 2),
+    ('e0000000-0000-0000-0000-000000000014', 'company_id', 'Empresa', 'company_id', 'uuid', 'select', NULL, true, false, true, true, true, 3, 3),
+    ('e0000000-0000-0000-0000-000000000014', 'active', 'Ativo', 'active', 'boolean', 'checkbox', NULL, true, false, true, true, true, 4, 4),
+    ('e0000000-0000-0000-0000-000000000014', 'created_at', 'Criado em', 'created_at', 'datetime', 'datetime', NULL, true, false, true, false, false, 5, 0);
+
+-- Insert Store -> Company relationship
+INSERT INTO tenant_demo.entity_relationships (entity_id, field_id, related_entity_id, relationship_type, foreign_key_column, display_field)
+SELECT 
+    'e0000000-0000-0000-0000-000000000014',
+    ef.id,
+    'e0000000-0000-0000-0000-000000000002',
+    'many-to-one',
+    'company_id',
+    'trade_name'
+FROM tenant_demo.entity_fields ef
+WHERE ef.entity_id = 'e0000000-0000-0000-0000-000000000014' AND ef.name = 'company_id';
+
+-- Insert Store permissions
+INSERT INTO tenant_demo.entity_permissions (entity_id, role, can_create, can_read, can_update, can_delete)
+VALUES
+    ('e0000000-0000-0000-0000-000000000014', 'admin', true, true, true, true),
+    ('e0000000-0000-0000-0000-000000000014', 'manager', true, true, true, false),
+    ('e0000000-0000-0000-0000-000000000014', 'operator', false, true, false, false);
+
 -- Insert Tax Regime entity
 INSERT INTO tenant_demo.entities (id, name, display_name, table_name, category, icon, description)
 VALUES (
@@ -274,7 +346,7 @@ WHERE ef.entity_id = 'e0000000-0000-0000-0000-000000000002' AND ef.name = 'speci
 DO $$
 BEGIN
     RAISE NOTICE 'Entity metadata seeded successfully';
-    RAISE NOTICE 'Entities: user, company, tax_regime, special_tax_regime';
+    RAISE NOTICE 'Entities: user, company, store, tax_regime, special_tax_regime';
 END $$;
 
 -- =====================================================
@@ -419,7 +491,7 @@ VALUES
     ('e0000000-0000-0000-0000-000000000006', 'product_group', 'Grupos de Produto', 'product_groups', 'Produtos', 'FolderTree', 'Categorias principais de produtos', true, true, true, true),
     ('e0000000-0000-0000-0000-000000000007', 'product_subgroup', 'Sub-Grupos de Produto', 'product_subgroups', 'Produtos', 'Folder', 'Subcategorias de produtos', true, true, true, true),
     ('e0000000-0000-0000-0000-000000000008', 'brand', 'Marcas', 'brands', 'Produtos', 'Tag', 'Fabricantes e marcas de produtos', true, true, true, true),
-    ('e0000000-0000-0000-0000-000000000013', 'unit_of_measure', 'Unidades de Medida', 'unit_of_measures', 'Produtos', 'Ruler', 'Unidades de medida para produtos', true, true, true, true)
+    ('e0000000-0000-0000-0000-000000000016', 'unit_of_measure', 'Unidades de Medida', 'unit_of_measures', 'Produtos', 'Ruler', 'Unidades de medida para produtos', true, true, true, true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Register product entity fields
@@ -468,10 +540,10 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Register unit_of_measure entity fields
 INSERT INTO tenant_demo.entity_fields (id, entity_id, name, display_name, column_name, data_type, is_required, is_readonly, is_system_field, show_in_list, show_in_detail, show_in_create, show_in_update, list_order, form_order, field_type, placeholder, help_text, validation_regex, default_value) VALUES
-('f1300000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000013', 'id', 'ID', 'id', 'uuid', true, true, true, false, true, false, false, 0, 0, 'text', NULL, NULL, NULL, NULL),
-('f1300000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000013', 'code', 'Código', 'code', 'string', true, false, false, true, true, true, true, 2, 1, 'text', 'UN', 'Código da unidade (ex: UN, KG, LT)', NULL, NULL),
-('f1300000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000013', 'name', 'Nome', 'name', 'string', true, false, false, true, true, true, true, 3, 2, 'text', 'Unidade', 'Nome completo da unidade', NULL, NULL),
-('f1300000-0000-0000-0000-000000000004', 'e0000000-0000-0000-0000-000000000013', 'active', 'Ativo', 'active', 'boolean', true, false, false, true, true, true, true, 4, 3, 'checkbox', NULL, NULL, NULL, 'true')
+('f1300000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000016', 'id', 'ID', 'id', 'uuid', true, true, true, false, true, false, false, 0, 0, 'text', NULL, NULL, NULL, NULL),
+('f1300000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000016', 'code', 'Código', 'code', 'string', true, false, false, true, true, true, true, 2, 1, 'text', 'UN', 'Código da unidade (ex: UN, KG, LT)', NULL, NULL),
+('f1300000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000016', 'name', 'Nome', 'name', 'string', true, false, false, true, true, true, true, 3, 2, 'text', 'Unidade', 'Nome completo da unidade', NULL, NULL),
+('f1300000-0000-0000-0000-000000000004', 'e0000000-0000-0000-0000-000000000016', 'active', 'Ativo', 'active', 'boolean', true, false, false, true, true, true, true, 4, 3, 'checkbox', NULL, NULL, NULL, 'true')
 ON CONFLICT (id) DO NOTHING;
 
 -- Register relationships
@@ -479,7 +551,7 @@ INSERT INTO tenant_demo.entity_relationships (id, entity_id, field_id, related_e
 ('50000000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000005', 'f0500000-0000-0000-0000-000000000006', 'e0000000-0000-0000-0000-000000000006', 'many-to-one', 'product_group_id', 'name'),
 ('50000000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000005', 'f0500000-0000-0000-0000-000000000007', 'e0000000-0000-0000-0000-000000000007', 'many-to-one', 'product_subgroup_id', 'name'),
 ('50000000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000005', 'f0500000-0000-0000-0000-000000000008', 'e0000000-0000-0000-0000-000000000008', 'many-to-one', 'brand_id', 'name'),
-('50000000-0000-0000-0000-000000000004', 'e0000000-0000-0000-0000-000000000005', 'f0500000-0000-0000-0000-000000000010', 'e0000000-0000-0000-0000-000000000013', 'many-to-one', 'unit_of_measure_id', 'code'),
+('50000000-0000-0000-0000-000000000004', 'e0000000-0000-0000-0000-000000000005', 'f0500000-0000-0000-0000-000000000010', 'e0000000-0000-0000-0000-000000000016', 'many-to-one', 'unit_of_measure_id', 'code'),
 ('70000000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000007', 'f0700000-0000-0000-0000-000000000004', 'e0000000-0000-0000-0000-000000000006', 'many-to-one', 'product_group_id', 'name')
 ON CONFLICT (id) DO NOTHING;
 
@@ -512,9 +584,9 @@ INSERT INTO tenant_demo.entity_permissions (entity_id, role, can_create, can_rea
 ('e0000000-0000-0000-0000-000000000008', 'admin', true, true, true, true),
 ('e0000000-0000-0000-0000-000000000008', 'manager', true, true, true, false),
 ('e0000000-0000-0000-0000-000000000008', 'operator', false, true, false, false),
-('e0000000-0000-0000-0000-000000000013', 'admin', true, true, true, true),
-('e0000000-0000-0000-0000-000000000013', 'manager', true, true, true, false),
-('e0000000-0000-0000-0000-000000000013', 'operator', false, true, false, false)
+('e0000000-0000-0000-0000-000000000016', 'admin', true, true, true, true),
+('e0000000-0000-0000-0000-000000000016', 'manager', true, true, true, false),
+('e0000000-0000-0000-0000-000000000016', 'operator', false, true, false, false)
 ON CONFLICT (entity_id, role) DO NOTHING;
 
 -- Log products module completion
@@ -659,7 +731,7 @@ ON CONFLICT (entity_id, role) DO NOTHING;
 -- Register payment_method entity (full CRUD)
 INSERT INTO tenant_demo.entities (id, name, display_name, table_name, category, icon, description, allow_create, allow_read, allow_update, allow_delete)
 VALUES (
-    'e0000000-0000-0000-0000-000000000012',
+    'e0000000-0000-0000-0000-000000000015',
     'payment_method',
     'Formas de Pagamento',
     'payment_methods',
@@ -671,24 +743,24 @@ VALUES (
 
 -- Register payment_method fields
 INSERT INTO tenant_demo.entity_fields (id, entity_id, name, display_name, column_name, data_type, is_required, is_readonly, is_system_field, show_in_list, show_in_detail, show_in_create, show_in_update, list_order, form_order, field_type, placeholder, help_text, validation_regex, default_value) VALUES
-('f1200000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000012', 'id', 'ID', 'id', 'uuid', true, true, true, false, true, false, false, 0, 0, 'text', NULL, NULL, NULL, NULL),
-('f1200000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000012', 'description', 'Descrição', 'description', 'string', true, false, false, true, true, true, true, 1, 1, 'text', 'PIX Chave CPF', 'Nome da forma de pagamento (ex: PIX Chave CPF, Dinheiro Balcão)', NULL, NULL),
-('f1200000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000012', 'payment_type_id', 'Tipo de Pagamento', 'payment_type_id', 'uuid', true, false, false, true, true, true, false, 2, 2, 'select', NULL, 'Selecione o tipo de forma de pagamento', NULL, NULL),
-('f1200000-0000-0000-0000-000000000004', 'e0000000-0000-0000-0000-000000000012', 'active', 'Ativo', 'active', 'boolean', true, false, false, true, true, true, true, 3, 3, 'checkbox', NULL, 'Ativar/desativar esta forma de pagamento', NULL, 'true'),
-('f1200000-0000-0000-0000-000000000005', 'e0000000-0000-0000-0000-000000000012', 'created_at', 'Criado em', 'created_at', 'datetime', true, true, true, true, true, false, false, 4, 0, 'datetime', NULL, NULL, NULL, NULL),
-('f1200000-0000-0000-0000-000000000006', 'e0000000-0000-0000-0000-000000000012', 'updated_at', 'Atualizado em', 'updated_at', 'datetime', true, true, true, false, true, false, false, 0, 0, 'datetime', NULL, NULL, NULL, NULL)
+('f1200000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000015', 'id', 'ID', 'id', 'uuid', true, true, true, false, true, false, false, 0, 0, 'text', NULL, NULL, NULL, NULL),
+('f1200000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000015', 'description', 'Descrição', 'description', 'string', true, false, false, true, true, true, true, 1, 1, 'text', 'PIX Chave CPF', 'Nome da forma de pagamento (ex: PIX Chave CPF, Dinheiro Balcão)', NULL, NULL),
+('f1200000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000015', 'payment_type_id', 'Tipo de Pagamento', 'payment_type_id', 'uuid', true, false, false, true, true, true, false, 2, 2, 'select', NULL, 'Selecione o tipo de forma de pagamento', NULL, NULL),
+('f1200000-0000-0000-0000-000000000004', 'e0000000-0000-0000-0000-000000000015', 'active', 'Ativo', 'active', 'boolean', true, false, false, true, true, true, true, 3, 3, 'checkbox', NULL, 'Ativar/desativar esta forma de pagamento', NULL, 'true'),
+('f1200000-0000-0000-0000-000000000005', 'e0000000-0000-0000-0000-000000000015', 'created_at', 'Criado em', 'created_at', 'datetime', true, true, true, true, true, false, false, 4, 0, 'datetime', NULL, NULL, NULL, NULL),
+('f1200000-0000-0000-0000-000000000006', 'e0000000-0000-0000-0000-000000000015', 'updated_at', 'Atualizado em', 'updated_at', 'datetime', true, true, true, false, true, false, false, 0, 0, 'datetime', NULL, NULL, NULL, NULL)
 ON CONFLICT (id) DO NOTHING;
 
 -- Register payment_method relationships
 INSERT INTO tenant_demo.entity_relationships (id, entity_id, field_id, related_entity_id, relationship_type, foreign_key_column, display_field) VALUES
-('50000000-0000-0000-0000-000000000012', 'e0000000-0000-0000-0000-000000000012', 'f1200000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000011', 'many-to-one', 'payment_type_id', 'description')
+('50000000-0000-0000-0000-000000000012', 'e0000000-0000-0000-0000-000000000015', 'f1200000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000011', 'many-to-one', 'payment_type_id', 'description')
 ON CONFLICT (id) DO NOTHING;
 
 -- Register payment_method permissions (full CRUD for admin, create/read for manager, read-only for operator)
 INSERT INTO tenant_demo.entity_permissions (entity_id, role, can_create, can_read, can_update, can_delete) VALUES
-('e0000000-0000-0000-0000-000000000012', 'admin', true, true, true, true),
-('e0000000-0000-0000-0000-000000000012', 'manager', true, true, false, false),
-('e0000000-0000-0000-0000-000000000012', 'operator', false, true, false, false)
+('e0000000-0000-0000-0000-000000000015', 'admin', true, true, true, true),
+('e0000000-0000-0000-0000-000000000015', 'manager', true, true, false, false),
+('e0000000-0000-0000-0000-000000000015', 'operator', false, true, false, false)
 ON CONFLICT (entity_id, role) DO NOTHING;
 
 -- Seed default payment method: À Vista (Cash)
@@ -718,7 +790,7 @@ END $$;
 -- Insert Tax Type entity (CRUD Genérico)
 INSERT INTO tenant_demo.entities (id, name, display_name, table_name, category, icon, description, allow_create, allow_read, allow_update, allow_delete)
 VALUES (
-    'e0000000-0000-0000-0000-000000000011',
+    'e0000000-0000-0000-0000-000000000012',
     'tax_type',
     'Tipos de Impostos',
     'tax_types',
@@ -731,43 +803,43 @@ VALUES (
 -- Insert Tax Type fields
 INSERT INTO tenant_demo.entity_fields (entity_id, name, display_name, column_name, data_type, field_type, max_length, is_required, is_unique, show_in_list, show_in_create, show_in_update, list_order, form_order)
 VALUES
-    ('e0000000-0000-0000-0000-000000000011', 'id', 'ID', 'id', 'uuid', 'text', NULL, true, false, false, false, false, 0, 0),
-    ('e0000000-0000-0000-0000-000000000011', 'code', 'Código', 'code', 'string', 'text', 20, true, true, true, true, true, 1, 1),
-    ('e0000000-0000-0000-0000-000000000011', 'description', 'Descrição', 'description', 'string', 'text', 255, false, false, true, true, true, 2, 2),
-    ('e0000000-0000-0000-0000-000000000011', 'category', 'Categoria', 'category', 'string', 'select', 50, false, false, true, true, true, 3, 3),
-    ('e0000000-0000-0000-0000-000000000011', 'calculation_type', 'Tipo de Cálculo', 'calculation_type', 'string', 'select', 50, true, false, true, true, true, 4, 4),
-    ('e0000000-0000-0000-0000-000000000011', 'active', 'Ativo', 'active', 'boolean', 'checkbox', NULL, true, false, true, true, true, 5, 5),
-    ('e0000000-0000-0000-0000-000000000011', 'created_at', 'Criado em', 'created_at', 'datetime', 'datetime', NULL, true, false, true, false, false, 6, 0);
+    ('e0000000-0000-0000-0000-000000000012', 'id', 'ID', 'id', 'uuid', 'text', NULL, true, false, false, false, false, 0, 0),
+    ('e0000000-0000-0000-0000-000000000012', 'code', 'Código', 'code', 'string', 'text', 20, true, true, true, true, true, 1, 1),
+    ('e0000000-0000-0000-0000-000000000012', 'description', 'Descrição', 'description', 'string', 'text', 255, false, false, true, true, true, 2, 2),
+    ('e0000000-0000-0000-0000-000000000012', 'category', 'Categoria', 'category', 'string', 'select', 50, false, false, true, true, true, 3, 3),
+    ('e0000000-0000-0000-0000-000000000012', 'calculation_type', 'Tipo de Cálculo', 'calculation_type', 'string', 'select', 50, true, false, true, true, true, 4, 4),
+    ('e0000000-0000-0000-0000-000000000012', 'active', 'Ativo', 'active', 'boolean', 'checkbox', NULL, true, false, true, true, true, 5, 5),
+    ('e0000000-0000-0000-0000-000000000012', 'created_at', 'Criado em', 'created_at', 'datetime', 'datetime', NULL, true, false, true, false, false, 6, 0);
 
 -- Insert category options for tax_type
 INSERT INTO tenant_demo.entity_field_options (field_id, value, label, display_order)
-SELECT id, 'federal', 'Federal', 1 FROM tenant_demo.entity_fields WHERE entity_id = 'e0000000-0000-0000-0000-000000000011' AND name = 'category'
+SELECT id, 'federal', 'Federal', 1 FROM tenant_demo.entity_fields WHERE entity_id = 'e0000000-0000-0000-0000-000000000012' AND name = 'category'
 UNION ALL
-SELECT id, 'estadual', 'Estadual', 2 FROM tenant_demo.entity_fields WHERE entity_id = 'e0000000-0000-0000-0000-000000000011' AND name = 'category'
+SELECT id, 'estadual', 'Estadual', 2 FROM tenant_demo.entity_fields WHERE entity_id = 'e0000000-0000-0000-0000-000000000012' AND name = 'category'
 UNION ALL
-SELECT id, 'municipal', 'Municipal', 3 FROM tenant_demo.entity_fields WHERE entity_id = 'e0000000-0000-0000-0000-000000000011' AND name = 'category';
+SELECT id, 'municipal', 'Municipal', 3 FROM tenant_demo.entity_fields WHERE entity_id = 'e0000000-0000-0000-0000-000000000012' AND name = 'category';
 
 -- Insert calculation_type options for tax_type
 INSERT INTO tenant_demo.entity_field_options (field_id, value, label, display_order)
-SELECT id, 'percentage', 'Percentual', 1 FROM tenant_demo.entity_fields WHERE entity_id = 'e0000000-0000-0000-0000-000000000011' AND name = 'calculation_type'
+SELECT id, 'percentage', 'Percentual', 1 FROM tenant_demo.entity_fields WHERE entity_id = 'e0000000-0000-0000-0000-000000000012' AND name = 'calculation_type'
 UNION ALL
-SELECT id, 'fixed', 'Valor Fixo', 2 FROM tenant_demo.entity_fields WHERE entity_id = 'e0000000-0000-0000-0000-000000000011' AND name = 'calculation_type'
+SELECT id, 'fixed', 'Valor Fixo', 2 FROM tenant_demo.entity_fields WHERE entity_id = 'e0000000-0000-0000-0000-000000000012' AND name = 'calculation_type'
 UNION ALL
-SELECT id, 'mva', 'MVA (Margem de Valor Agregado)', 3 FROM tenant_demo.entity_fields WHERE entity_id = 'e0000000-0000-0000-0000-000000000011' AND name = 'calculation_type'
+SELECT id, 'mva', 'MVA (Margem de Valor Agregado)', 3 FROM tenant_demo.entity_fields WHERE entity_id = 'e0000000-0000-0000-0000-000000000012' AND name = 'calculation_type'
 UNION ALL
-SELECT id, 'reduced_base', 'Base Reduzida', 4 FROM tenant_demo.entity_fields WHERE entity_id = 'e0000000-0000-0000-0000-000000000011' AND name = 'calculation_type';
+SELECT id, 'reduced_base', 'Base Reduzida', 4 FROM tenant_demo.entity_fields WHERE entity_id = 'e0000000-0000-0000-0000-000000000012' AND name = 'calculation_type';
 
 -- Insert Tax Type permissions
 INSERT INTO tenant_demo.entity_permissions (entity_id, role, can_create, can_read, can_update, can_delete)
 VALUES
-    ('e0000000-0000-0000-0000-000000000011', 'admin', true, true, true, true),
-    ('e0000000-0000-0000-0000-000000000011', 'manager', true, true, true, false),
-    ('e0000000-0000-0000-0000-000000000011', 'operator', false, true, false, false);
+    ('e0000000-0000-0000-0000-000000000012', 'admin', true, true, true, true),
+    ('e0000000-0000-0000-0000-000000000012', 'manager', true, true, true, false),
+    ('e0000000-0000-0000-0000-000000000012', 'operator', false, true, false, false);
 
 -- Insert Tax Rule entity (CRUD Genérico)
 INSERT INTO tenant_demo.entities (id, name, display_name, table_name, category, icon, description, allow_create, allow_read, allow_update, allow_delete)
 VALUES (
-    'e0000000-0000-0000-0000-000000000012',
+    'e0000000-0000-0000-0000-000000000013',
     'tax_rule',
     'Regras Fiscais',
     'tax_rules',
@@ -780,52 +852,50 @@ VALUES (
 -- Insert Tax Rule fields
 INSERT INTO tenant_demo.entity_fields (entity_id, name, display_name, column_name, data_type, field_type, max_length, is_required, show_in_list, show_in_create, show_in_update, list_order, form_order)
 VALUES
-    ('e0000000-0000-0000-0000-000000000012', 'id', 'ID', 'id', 'uuid', 'text', NULL, true, false, false, false, 0, 0),
-    ('e0000000-0000-0000-0000-000000000012', 'tax_type_id', 'Tipo de Imposto', 'tax_type_id', 'uuid', 'select', NULL, true, true, true, true, 1, 1),
-    ('e0000000-0000-0000-0000-000000000012', 'state', 'UF', 'state', 'string', 'text', 2, true, true, true, true, 2, 2),
-    ('e0000000-0000-0000-0000-000000000012', 'product_id', 'Produto (opcional)', 'product_id', 'uuid', 'select', NULL, false, false, true, true, 0, 3),
-    ('e0000000-0000-0000-0000-000000000012', 'cst_code', 'CST', 'cst_code', 'string', 'text', 10, false, false, true, true, 0, 4),
-    ('e0000000-0000-0000-0000-000000000012', 'rate', 'Alíquota (%)', 'rate', 'decimal', 'number', NULL, true, true, true, true, 3, 5),
-    ('e0000000-0000-0000-0000-000000000012', 'base_modality', 'Modalidade da Base', 'base_modality', 'string', 'text', 50, false, false, true, true, 0, 6),
-    ('e0000000-0000-0000-0000-000000000012', 'base_reduction_rate', 'Redução da Base (%)', 'base_reduction_rate', 'decimal', 'number', NULL, false, false, true, true, 0, 7),
-    ('e0000000-0000-0000-0000-000000000012', 'mva_rate', 'MVA (%)', 'mva_rate', 'decimal', 'number', NULL, false, false, true, true, 0, 8),
-    ('e0000000-0000-0000-0000-000000000012', 'active_from', 'Vigência Início', 'active_from', 'date', 'date', NULL, true, true, true, true, 4, 9),
-    ('e0000000-0000-0000-0000-000000000012', 'active_to', 'Vigência Fim', 'active_to', 'date', 'date', NULL, false, true, true, true, 5, 10),
-    ('e0000000-0000-0000-0000-000000000012', 'active', 'Ativo', 'active', 'boolean', 'checkbox', NULL, true, true, true, true, 6, 11),
-    ('e0000000-0000-0000-0000-000000000012', 'created_at', 'Criado em', 'created_at', 'datetime', 'datetime', NULL, true, true, false, false, 7, 0);
+    ('e0000000-0000-0000-0000-000000000013', 'id', 'ID', 'id', 'uuid', 'text', NULL, true, false, false, false, 0, 0),
+    ('e0000000-0000-0000-0000-000000000013', 'tax_type_id', 'Tipo de Imposto', 'tax_type_id', 'uuid', 'select', NULL, true, true, true, true, 1, 1),
+    ('e0000000-0000-0000-0000-000000000013', 'state', 'UF', 'state', 'string', 'text', 2, true, true, true, true, 2, 2),
+    ('e0000000-0000-0000-0000-000000000013', 'product_id', 'Produto (opcional)', 'product_id', 'uuid', 'select', NULL, false, false, true, true, 0, 3),
+    ('e0000000-0000-0000-0000-000000000013', 'cst_code', 'CST', 'cst_code', 'string', 'text', 10, false, false, true, true, 0, 4),
+    ('e0000000-0000-0000-0000-000000000013', 'rate', 'Alíquota (%)', 'rate', 'number', 'number', NULL, true, true, true, true, 3, 5),
+    ('e0000000-0000-0000-0000-000000000013', 'base_modality', 'Modalidade da Base', 'base_modality', 'string', 'text', 50, false, false, true, true, 0, 6),
+    ('e0000000-0000-0000-0000-000000000013', 'base_reduction_rate', 'Redução da Base (%)', 'base_reduction_rate', 'number', 'number', NULL, false, false, true, true, 0, 7),
+    ('e0000000-0000-0000-0000-000000000013', 'mva_rate', 'MVA (%)', 'mva_rate', 'number', 'number', NULL, false, false, true, true, 0, 8),
+    ('e0000000-0000-0000-0000-000000000013', 'active_from', 'Vigência Início', 'active_from', 'date', 'date', NULL, true, true, true, true, 4, 9),
+    ('e0000000-0000-0000-0000-000000000013', 'active_to', 'Vigência Fim', 'active_to', 'date', 'date', NULL, false, true, true, true, 5, 10),
+    ('e0000000-0000-0000-0000-000000000013', 'active', 'Ativo', 'active', 'boolean', 'checkbox', NULL, true, true, true, true, 6, 11),
+    ('e0000000-0000-0000-0000-000000000013', 'created_at', 'Criado em', 'created_at', 'datetime', 'datetime', NULL, true, true, false, false, 7, 0);
 
 -- Add relationship for tax_type_id
-INSERT INTO tenant_demo.entity_relationships (id, field_id, related_entity_name, related_entity_display_name, relationship_type, display_field, foreign_key_column)
+INSERT INTO tenant_demo.entity_relationships (entity_id, field_id, related_entity_id, relationship_type, foreign_key_column, display_field)
 SELECT 
-    uuid_generate_v4(),
+    'e0000000-0000-0000-0000-000000000013',
     ef.id,
-    'tax_type',
-    'Tipos de Impostos',
+    'e0000000-0000-0000-0000-000000000012',
     'many-to-one',
-    'code',
-    'tax_type_id'
+    'tax_type_id',
+    'code'
 FROM tenant_demo.entity_fields ef
-WHERE ef.entity_id = 'e0000000-0000-0000-0000-000000000012' AND ef.name = 'tax_type_id';
+WHERE ef.entity_id = 'e0000000-0000-0000-0000-000000000013' AND ef.name = 'tax_type_id';
 
 -- Add relationship for product_id
-INSERT INTO tenant_demo.entity_relationships (id, field_id, related_entity_name, related_entity_display_name, relationship_type, display_field, foreign_key_column)
+INSERT INTO tenant_demo.entity_relationships (entity_id, field_id, related_entity_id, relationship_type, foreign_key_column, display_field)
 SELECT 
-    uuid_generate_v4(),
+    'e0000000-0000-0000-0000-000000000013',
     ef.id,
-    'product',
-    'Produtos',
+    'e0000000-0000-0000-0000-000000000005',
     'many-to-one',
-    'description',
-    'product_id'
+    'product_id',
+    'description'
 FROM tenant_demo.entity_fields ef
-WHERE ef.entity_id = 'e0000000-0000-0000-0000-000000000012' AND ef.name = 'product_id';
+WHERE ef.entity_id = 'e0000000-0000-0000-0000-000000000013' AND ef.name = 'product_id';
 
 -- Insert Tax Rule permissions
 INSERT INTO tenant_demo.entity_permissions (entity_id, role, can_create, can_read, can_update, can_delete)
 VALUES
-    ('e0000000-0000-0000-0000-000000000012', 'admin', true, true, true, true),
-    ('e0000000-0000-0000-0000-000000000012', 'manager', true, true, true, false),
-    ('e0000000-0000-0000-0000-000000000012', 'operator', false, true, false, false);
+    ('e0000000-0000-0000-0000-000000000013', 'admin', true, true, true, true),
+    ('e0000000-0000-0000-0000-000000000013', 'manager', true, true, true, false),
+    ('e0000000-0000-0000-0000-000000000013', 'operator', false, true, false, false);
 
 -- =====================================================
 -- SEED DATA FOR TAX TYPES
@@ -976,3 +1046,5 @@ BEGIN
     RAISE NOTICE '📊 Reports module seeded successfully';
     RAISE NOTICE 'Example Report: Products List with filters and export capabilities';
 END $$;
+
+

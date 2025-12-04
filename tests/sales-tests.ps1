@@ -47,7 +47,7 @@ function Write-TestResult {
 
 # ==================== Test Data ====================
 
-$storeId = "40000000-0000-0000-0000-000000000001"
+$storeId = "45000000-0000-0000-0000-000000000001"
 $productId1 = "40000000-0000-0000-0000-000000000001"
 $productId2 = "40000000-0000-0000-0000-000000000002"
 $operatorId = "30000000-0000-0000-0000-000000000001"
@@ -222,11 +222,11 @@ try {
 
 Write-Host "TEST 9: Filter Sales by Date Range" -ForegroundColor Cyan
 
-$startDate = (Get-Date).AddDays(-7).ToString("yyyy-MM-dd")
-$endDate = (Get-Date).ToString("yyyy-MM-dd")
+$dateFrom = (Get-Date).AddDays(-7).ToString("yyyy-MM-dd")
+$dateTo = (Get-Date).ToString("yyyy-MM-dd")
 
 try {
-    $response = Invoke-RestMethod -Uri "$BaseUrl/api/sales?startDate=$startDate&endDate=$endDate&page=1&pageSize=10" -Method Get -Headers $headers
+    $response = Invoke-RestMethod -Uri "$BaseUrl/api/sales?dateFrom=$dateFrom&dateTo=$dateTo&page=1&pageSize=10" -Method Get -Headers $headers
     Write-TestResult "Filter by Date Range" $true $response 200
 } catch {
     Write-TestResult "Filter by Date Range" $false $_.Exception.Message $_.Exception.Response.StatusCode.value__

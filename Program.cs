@@ -32,7 +32,7 @@ builder.Host.UseSerilog();
 var corsOrigins = Environment.GetEnvironmentVariable("CORS_ORIGINS");
 if (string.IsNullOrEmpty(corsOrigins))
 {
-    corsOrigins = "http://localhost:5173"; // Fallback para dev local
+    corsOrigins = "http://localhost:5173,http://localhost:5174"; // Fallback para dev local
 }
 
 // Configurar CORS com suporte a wildcard (*.projetosolis.com.br)

@@ -114,7 +114,7 @@ BEGIN
         CREATE TABLE IF NOT EXISTS %I.sale_payments (
             id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
             sale_id UUID NOT NULL,
-            payment_type VARCHAR(50) NOT NULL,
+            payment_method_id UUID NOT NULL,
             amount NUMERIC(12,2) NOT NULL,
             acquirer_txn_id VARCHAR(200) NULL,
             authorization_code VARCHAR(200) NULL,
@@ -125,19 +125,21 @@ BEGIN
             
             CONSTRAINT fk_sale_payments_sale FOREIGN KEY (sale_id) 
                 REFERENCES %I.sales(id) ON DELETE CASCADE,
+            CONSTRAINT fk_sale_payments_method FOREIGN KEY (payment_method_id)
+                REFERENCES %I.payment_methods(id),
             CONSTRAINT chk_sale_payments_amount CHECK (amount > 0),
             CONSTRAINT chk_sale_payments_change CHECK (change_amount IS NULL OR change_amount >= 0),
             CONSTRAINT chk_sale_payments_status CHECK (status IN (''pending'', ''processed'', ''failed'', ''reversed''))
-        )', p_schema_name, p_schema_name);
+        )', p_schema_name, p_schema_name, p_schema_name);
     
     -- Indexes for sale_payments table
     EXECUTE format('CREATE INDEX IF NOT EXISTS idx_sale_payments_sale ON %I.sale_payments(sale_id)', p_schema_name);
-    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_sale_payments_type ON %I.sale_payments(payment_type)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_sale_payments_method ON %I.sale_payments(payment_method_id)', p_schema_name);
     EXECUTE format('CREATE INDEX IF NOT EXISTS idx_sale_payments_status ON %I.sale_payments(status)', p_schema_name);
     EXECUTE format('CREATE INDEX IF NOT EXISTS idx_sale_payments_acquirer_txn ON %I.sale_payments(acquirer_txn_id) WHERE acquirer_txn_id IS NOT NULL', p_schema_name);
     
     EXECUTE format('COMMENT ON TABLE %I.sale_payments IS ''Sale payments table for tenant %I''', p_schema_name, p_schema_name);
-    EXECUTE format('COMMENT ON COLUMN %I.sale_payments.payment_type IS ''Payment type: cash, card, pix, voucher, etc''', p_schema_name);
+    EXECUTE format('COMMENT ON COLUMN %I.sale_payments.payment_method_id IS ''Reference to payment_methods table''', p_schema_name);
     
     -- =============================================
     -- SALE_TAXES TABLE (Impostos aplicados por item)

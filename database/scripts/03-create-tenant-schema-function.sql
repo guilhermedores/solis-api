@@ -134,11 +134,56 @@ BEGIN
             FOR EACH ROW
             EXECUTE FUNCTION update_updated_at_column()', p_schema_name, p_schema_name);
     
+    -- =============================================
+    -- STORES TABLE
+    -- =============================================
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.stores (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            code VARCHAR(20) NOT NULL UNIQUE,
+            name VARCHAR(200) NOT NULL,
+            company_id UUID NOT NULL,
+            active BOOLEAN NOT NULL DEFAULT true,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            
+            -- Address fields (owned entity)
+            address_zip_code VARCHAR(8),
+            address_street VARCHAR(200),
+            address_number VARCHAR(20),
+            address_complement VARCHAR(100),
+            address_district VARCHAR(100),
+            address_city VARCHAR(100),
+            address_state VARCHAR(2),
+            
+            -- Contact fields (owned entity)
+            contact_phone VARCHAR(20),
+            contact_mobile VARCHAR(20),
+            contact_email VARCHAR(200),
+            
+            CONSTRAINT fk_stores_company FOREIGN KEY (company_id) 
+                REFERENCES %I.companies(id) ON DELETE RESTRICT,
+            CONSTRAINT chk_stores_state_length CHECK (address_state IS NULL OR LENGTH(address_state) = 2)
+        )', p_schema_name, p_schema_name);
+    
+    -- Create indexes for stores table
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_stores_code ON %I.stores(code)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_stores_company ON %I.stores(company_id)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_stores_active ON %I.stores(active)', p_schema_name);
+    
+    EXECUTE format('
+        DROP TRIGGER IF EXISTS trg_stores_updated_at ON %I.stores;
+        CREATE TRIGGER trg_stores_updated_at
+            BEFORE UPDATE ON %I.stores
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column()', p_schema_name, p_schema_name);
+
     -- Add table comments
     EXECUTE format('COMMENT ON TABLE %I.users IS ''Users table for tenant %I''', p_schema_name, p_schema_name);
     EXECUTE format('COMMENT ON TABLE %I.tax_regimes IS ''Tax regimes table for tenant %I''', p_schema_name, p_schema_name);
     EXECUTE format('COMMENT ON TABLE %I.special_tax_regimes IS ''Special tax regimes table for tenant %I''', p_schema_name, p_schema_name);
     EXECUTE format('COMMENT ON TABLE %I.companies IS ''Companies table for tenant %I''', p_schema_name, p_schema_name);
+    EXECUTE format('COMMENT ON TABLE %I.stores IS ''Stores table for tenant %I''', p_schema_name, p_schema_name);
     
     -- Create metadata tables for dynamic CRUD
     -- Entity metadata table
