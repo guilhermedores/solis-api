@@ -647,6 +647,76 @@ BEGIN
     
     EXECUTE format('COMMENT ON TABLE %I.payment_methods IS ''Payment methods table for tenant %I''', p_schema_name, p_schema_name);
     
+    -- Create tax_types table (CRUD Genérico - Tipos de Impostos)
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.tax_types (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            code VARCHAR(20) UNIQUE NOT NULL,
+            description VARCHAR(255),
+            category VARCHAR(50),
+            calculation_type VARCHAR(50) NOT NULL,
+            active BOOLEAN NOT NULL DEFAULT true,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            
+            CONSTRAINT chk_tax_types_calculation_type CHECK (calculation_type IN (''percentage'', ''fixed'', ''mva'', ''reduced_base'')),
+            CONSTRAINT chk_tax_types_category CHECK (category IN (''federal'', ''estadual'', ''municipal'') OR category IS NULL)
+        )', p_schema_name);
+    
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_tax_types_code ON %I.tax_types(code)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_tax_types_category ON %I.tax_types(category)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_tax_types_active ON %I.tax_types(active)', p_schema_name);
+    
+    EXECUTE format('
+        DROP TRIGGER IF EXISTS trg_tax_types_updated_at ON %I.tax_types;
+        CREATE TRIGGER trg_tax_types_updated_at
+            BEFORE UPDATE ON %I.tax_types
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column()', p_schema_name, p_schema_name);
+    
+    EXECUTE format('COMMENT ON TABLE %I.tax_types IS ''Tax types reference table (ICMS, PIS, COFINS, ISS, IPI) for tenant %I''', p_schema_name, p_schema_name);
+    
+    -- Create tax_rules table (CRUD Genérico - Regras Fiscais por UF/Produto/Vigência)
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.tax_rules (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            tax_type_id UUID NOT NULL,
+            state CHAR(2) NOT NULL,
+            product_id UUID NULL,
+            cst_code VARCHAR(10) NULL,
+            rate NUMERIC(10,4) NOT NULL,
+            base_modality VARCHAR(50) NULL,
+            base_reduction_rate NUMERIC(10,4) NULL,
+            mva_rate NUMERIC(10,4) NULL,
+            active_from DATE NOT NULL,
+            active_to DATE NULL,
+            active BOOLEAN NOT NULL DEFAULT true,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            
+            CONSTRAINT fk_tax_rules_tax_type FOREIGN KEY (tax_type_id) 
+                REFERENCES %I.tax_types(id) ON DELETE RESTRICT,
+            CONSTRAINT fk_tax_rules_product FOREIGN KEY (product_id) 
+                REFERENCES %I.products(id) ON DELETE RESTRICT,
+            CONSTRAINT chk_tax_rules_rate CHECK (rate >= 0),
+            CONSTRAINT chk_tax_rules_dates CHECK (active_to IS NULL OR active_to >= active_from)
+        )', p_schema_name, p_schema_name, p_schema_name);
+    
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_tax_rules_tax_type ON %I.tax_rules(tax_type_id)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_tax_rules_state ON %I.tax_rules(state)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_tax_rules_product ON %I.tax_rules(product_id)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_tax_rules_state_product_date ON %I.tax_rules(state, product_id, active_from)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_tax_rules_active ON %I.tax_rules(active)', p_schema_name);
+    
+    EXECUTE format('
+        DROP TRIGGER IF EXISTS trg_tax_rules_updated_at ON %I.tax_rules;
+        CREATE TRIGGER trg_tax_rules_updated_at
+            BEFORE UPDATE ON %I.tax_rules
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column()', p_schema_name, p_schema_name);
+    
+    EXECUTE format('COMMENT ON TABLE %I.tax_rules IS ''Tax rules by state, product and validity period for tenant %I''', p_schema_name, p_schema_name);
+    
 END;
 $$ LANGUAGE plpgsql;
 

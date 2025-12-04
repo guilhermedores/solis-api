@@ -83,10 +83,10 @@ public class DynamicCrudController : ControllerBase
                 return StatusCode(403, new { success = false, error = "Acesso negado. Permissão insuficiente." });
             
             // Build filters
-            Dictionary<string, object?>? filters = null;
+            Dictionary<string, object>? filters = null;
             if (active.HasValue)
             {
-                filters = new Dictionary<string, object?> { { "active", active.Value } };
+                filters = new Dictionary<string, object> { { "active", active.Value } };
             }
             
             var (data, totalCount) = await _dynamicCrudService.ListAsync(

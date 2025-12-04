@@ -712,6 +712,220 @@ BEGIN
 END $$;
 
 -- =====================================================
+-- FISCAL MODULE (TAX TYPES AND TAX RULES)
+-- =====================================================
+
+-- Insert Tax Type entity (CRUD Genérico)
+INSERT INTO tenant_demo.entities (id, name, display_name, table_name, category, icon, description, allow_create, allow_read, allow_update, allow_delete)
+VALUES (
+    'e0000000-0000-0000-0000-000000000011',
+    'tax_type',
+    'Tipos de Impostos',
+    'tax_types',
+    'Fiscal',
+    'receipt-tax',
+    'Gerenciamento de tipos de impostos (ICMS, PIS, COFINS, ISS, IPI)',
+    true, true, true, true
+);
+
+-- Insert Tax Type fields
+INSERT INTO tenant_demo.entity_fields (entity_id, name, display_name, column_name, data_type, field_type, max_length, is_required, is_unique, show_in_list, show_in_create, show_in_update, list_order, form_order)
+VALUES
+    ('e0000000-0000-0000-0000-000000000011', 'id', 'ID', 'id', 'uuid', 'text', NULL, true, false, false, false, false, 0, 0),
+    ('e0000000-0000-0000-0000-000000000011', 'code', 'Código', 'code', 'string', 'text', 20, true, true, true, true, true, 1, 1),
+    ('e0000000-0000-0000-0000-000000000011', 'description', 'Descrição', 'description', 'string', 'text', 255, false, false, true, true, true, 2, 2),
+    ('e0000000-0000-0000-0000-000000000011', 'category', 'Categoria', 'category', 'string', 'select', 50, false, false, true, true, true, 3, 3),
+    ('e0000000-0000-0000-0000-000000000011', 'calculation_type', 'Tipo de Cálculo', 'calculation_type', 'string', 'select', 50, true, false, true, true, true, 4, 4),
+    ('e0000000-0000-0000-0000-000000000011', 'active', 'Ativo', 'active', 'boolean', 'checkbox', NULL, true, false, true, true, true, 5, 5),
+    ('e0000000-0000-0000-0000-000000000011', 'created_at', 'Criado em', 'created_at', 'datetime', 'datetime', NULL, true, false, true, false, false, 6, 0);
+
+-- Insert category options for tax_type
+INSERT INTO tenant_demo.entity_field_options (field_id, value, label, display_order)
+SELECT id, 'federal', 'Federal', 1 FROM tenant_demo.entity_fields WHERE entity_id = 'e0000000-0000-0000-0000-000000000011' AND name = 'category'
+UNION ALL
+SELECT id, 'estadual', 'Estadual', 2 FROM tenant_demo.entity_fields WHERE entity_id = 'e0000000-0000-0000-0000-000000000011' AND name = 'category'
+UNION ALL
+SELECT id, 'municipal', 'Municipal', 3 FROM tenant_demo.entity_fields WHERE entity_id = 'e0000000-0000-0000-0000-000000000011' AND name = 'category';
+
+-- Insert calculation_type options for tax_type
+INSERT INTO tenant_demo.entity_field_options (field_id, value, label, display_order)
+SELECT id, 'percentage', 'Percentual', 1 FROM tenant_demo.entity_fields WHERE entity_id = 'e0000000-0000-0000-0000-000000000011' AND name = 'calculation_type'
+UNION ALL
+SELECT id, 'fixed', 'Valor Fixo', 2 FROM tenant_demo.entity_fields WHERE entity_id = 'e0000000-0000-0000-0000-000000000011' AND name = 'calculation_type'
+UNION ALL
+SELECT id, 'mva', 'MVA (Margem de Valor Agregado)', 3 FROM tenant_demo.entity_fields WHERE entity_id = 'e0000000-0000-0000-0000-000000000011' AND name = 'calculation_type'
+UNION ALL
+SELECT id, 'reduced_base', 'Base Reduzida', 4 FROM tenant_demo.entity_fields WHERE entity_id = 'e0000000-0000-0000-0000-000000000011' AND name = 'calculation_type';
+
+-- Insert Tax Type permissions
+INSERT INTO tenant_demo.entity_permissions (entity_id, role, can_create, can_read, can_update, can_delete)
+VALUES
+    ('e0000000-0000-0000-0000-000000000011', 'admin', true, true, true, true),
+    ('e0000000-0000-0000-0000-000000000011', 'manager', true, true, true, false),
+    ('e0000000-0000-0000-0000-000000000011', 'operator', false, true, false, false);
+
+-- Insert Tax Rule entity (CRUD Genérico)
+INSERT INTO tenant_demo.entities (id, name, display_name, table_name, category, icon, description, allow_create, allow_read, allow_update, allow_delete)
+VALUES (
+    'e0000000-0000-0000-0000-000000000012',
+    'tax_rule',
+    'Regras Fiscais',
+    'tax_rules',
+    'Fiscal',
+    'calculator',
+    'Regras de tributação por UF, produto e período de vigência',
+    true, true, true, true
+);
+
+-- Insert Tax Rule fields
+INSERT INTO tenant_demo.entity_fields (entity_id, name, display_name, column_name, data_type, field_type, max_length, is_required, show_in_list, show_in_create, show_in_update, list_order, form_order)
+VALUES
+    ('e0000000-0000-0000-0000-000000000012', 'id', 'ID', 'id', 'uuid', 'text', NULL, true, false, false, false, 0, 0),
+    ('e0000000-0000-0000-0000-000000000012', 'tax_type_id', 'Tipo de Imposto', 'tax_type_id', 'uuid', 'select', NULL, true, true, true, true, 1, 1),
+    ('e0000000-0000-0000-0000-000000000012', 'state', 'UF', 'state', 'string', 'text', 2, true, true, true, true, 2, 2),
+    ('e0000000-0000-0000-0000-000000000012', 'product_id', 'Produto (opcional)', 'product_id', 'uuid', 'select', NULL, false, false, true, true, 0, 3),
+    ('e0000000-0000-0000-0000-000000000012', 'cst_code', 'CST', 'cst_code', 'string', 'text', 10, false, false, true, true, 0, 4),
+    ('e0000000-0000-0000-0000-000000000012', 'rate', 'Alíquota (%)', 'rate', 'decimal', 'number', NULL, true, true, true, true, 3, 5),
+    ('e0000000-0000-0000-0000-000000000012', 'base_modality', 'Modalidade da Base', 'base_modality', 'string', 'text', 50, false, false, true, true, 0, 6),
+    ('e0000000-0000-0000-0000-000000000012', 'base_reduction_rate', 'Redução da Base (%)', 'base_reduction_rate', 'decimal', 'number', NULL, false, false, true, true, 0, 7),
+    ('e0000000-0000-0000-0000-000000000012', 'mva_rate', 'MVA (%)', 'mva_rate', 'decimal', 'number', NULL, false, false, true, true, 0, 8),
+    ('e0000000-0000-0000-0000-000000000012', 'active_from', 'Vigência Início', 'active_from', 'date', 'date', NULL, true, true, true, true, 4, 9),
+    ('e0000000-0000-0000-0000-000000000012', 'active_to', 'Vigência Fim', 'active_to', 'date', 'date', NULL, false, true, true, true, 5, 10),
+    ('e0000000-0000-0000-0000-000000000012', 'active', 'Ativo', 'active', 'boolean', 'checkbox', NULL, true, true, true, true, 6, 11),
+    ('e0000000-0000-0000-0000-000000000012', 'created_at', 'Criado em', 'created_at', 'datetime', 'datetime', NULL, true, true, false, false, 7, 0);
+
+-- Add relationship for tax_type_id
+INSERT INTO tenant_demo.entity_relationships (id, field_id, related_entity_name, related_entity_display_name, relationship_type, display_field, foreign_key_column)
+SELECT 
+    uuid_generate_v4(),
+    ef.id,
+    'tax_type',
+    'Tipos de Impostos',
+    'many-to-one',
+    'code',
+    'tax_type_id'
+FROM tenant_demo.entity_fields ef
+WHERE ef.entity_id = 'e0000000-0000-0000-0000-000000000012' AND ef.name = 'tax_type_id';
+
+-- Add relationship for product_id
+INSERT INTO tenant_demo.entity_relationships (id, field_id, related_entity_name, related_entity_display_name, relationship_type, display_field, foreign_key_column)
+SELECT 
+    uuid_generate_v4(),
+    ef.id,
+    'product',
+    'Produtos',
+    'many-to-one',
+    'description',
+    'product_id'
+FROM tenant_demo.entity_fields ef
+WHERE ef.entity_id = 'e0000000-0000-0000-0000-000000000012' AND ef.name = 'product_id';
+
+-- Insert Tax Rule permissions
+INSERT INTO tenant_demo.entity_permissions (entity_id, role, can_create, can_read, can_update, can_delete)
+VALUES
+    ('e0000000-0000-0000-0000-000000000012', 'admin', true, true, true, true),
+    ('e0000000-0000-0000-0000-000000000012', 'manager', true, true, true, false),
+    ('e0000000-0000-0000-0000-000000000012', 'operator', false, true, false, false);
+
+-- =====================================================
+-- SEED DATA FOR TAX TYPES
+-- =====================================================
+
+-- Insert tax types
+INSERT INTO tenant_demo.tax_types (id, code, description, category, calculation_type, active)
+VALUES 
+    ('70000000-0000-0000-0000-000000000001', 'ICMS', 'Imposto sobre Circulação de Mercadorias e Serviços', 'estadual', 'percentage', true),
+    ('70000000-0000-0000-0000-000000000002', 'PIS', 'Programa de Integração Social', 'federal', 'percentage', true),
+    ('70000000-0000-0000-0000-000000000003', 'COFINS', 'Contribuição para Financiamento da Seguridade Social', 'federal', 'percentage', true),
+    ('70000000-0000-0000-0000-000000000004', 'ISS', 'Imposto sobre Serviços', 'municipal', 'percentage', true),
+    ('70000000-0000-0000-0000-000000000005', 'IPI', 'Imposto sobre Produtos Industrializados', 'federal', 'percentage', true)
+ON CONFLICT (code) DO NOTHING;
+
+-- =====================================================
+-- SEED DATA FOR TAX RULES (Exemplos)
+-- =====================================================
+
+-- ICMS MG - Regra genérica (18%)
+INSERT INTO tenant_demo.tax_rules (id, tax_type_id, state, product_id, rate, active_from, active_to, active)
+VALUES (
+    '80000000-0000-0000-0000-000000000001',
+    '70000000-0000-0000-0000-000000000001', -- ICMS
+    'MG',
+    NULL, -- Regra genérica (sem produto específico)
+    18.0000,
+    '2024-01-01',
+    NULL, -- Vigente indefinidamente
+    true
+)
+ON CONFLICT DO NOTHING;
+
+-- PIS - Regra genérica federal (1.65%)
+INSERT INTO tenant_demo.tax_rules (id, tax_type_id, state, product_id, rate, active_from, active_to, active)
+VALUES (
+    '80000000-0000-0000-0000-000000000002',
+    '70000000-0000-0000-0000-000000000002', -- PIS
+    'MG', -- Aplicável a todos os estados
+    NULL,
+    1.6500,
+    '2024-01-01',
+    NULL,
+    true
+)
+ON CONFLICT DO NOTHING;
+
+-- COFINS - Regra genérica federal (7.60%)
+INSERT INTO tenant_demo.tax_rules (id, tax_type_id, state, product_id, rate, active_from, active_to, active)
+VALUES (
+    '80000000-0000-0000-0000-000000000003',
+    '70000000-0000-0000-0000-000000000003', -- COFINS
+    'MG',
+    NULL,
+    7.6000,
+    '2024-01-01',
+    NULL,
+    true
+)
+ON CONFLICT DO NOTHING;
+
+-- ICMS SP - Regra genérica (18%)
+INSERT INTO tenant_demo.tax_rules (id, tax_type_id, state, product_id, rate, active_from, active_to, active)
+VALUES (
+    '80000000-0000-0000-0000-000000000004',
+    '70000000-0000-0000-0000-000000000001', -- ICMS
+    'SP',
+    NULL,
+    18.0000,
+    '2024-01-01',
+    NULL,
+    true
+)
+ON CONFLICT DO NOTHING;
+
+-- ICMS RJ - Regra genérica (20%)
+INSERT INTO tenant_demo.tax_rules (id, tax_type_id, state, product_id, rate, active_from, active_to, active)
+VALUES (
+    '80000000-0000-0000-0000-000000000005',
+    '70000000-0000-0000-0000-000000000001', -- ICMS
+    'RJ',
+    NULL,
+    20.0000,
+    '2024-01-01',
+    NULL,
+    true
+)
+ON CONFLICT DO NOTHING;
+
+-- Log fiscal module completion
+DO $$
+BEGIN
+    RAISE NOTICE '📊 Fiscal module seeded successfully';
+    RAISE NOTICE 'Tax Types: ICMS, PIS, COFINS, ISS, IPI';
+    RAISE NOTICE 'Tax Rules: ICMS MG (18%%), ICMS SP (18%%), ICMS RJ (20%%), PIS (1.65%%), COFINS (7.60%%)';
+    RAISE NOTICE 'Entities: tax_type, tax_rule (both with full CRUD)';
+    RAISE NOTICE 'NOTE: Run 05-create-sales-tables.sql to create sales transaction tables';
+END $$;
+
+-- =====================================================
 -- REPORTS MODULE
 -- =====================================================
 

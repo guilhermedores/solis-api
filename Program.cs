@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using SolisApi.Data;
 using SolisApi.Services;
+using SolisApi.Services.Domain;
+using SolisApi.Repositories;
 using SolisApi.Middleware;
 using Serilog;
 
@@ -114,6 +116,11 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<DynamicCrudService>();
 builder.Services.AddScoped<ReportService>();
+
+// Sales Module Services (DDD)
+builder.Services.AddScoped<ITaxDomainService, TaxDomainService>();
+builder.Services.AddScoped<ISaleRepository, SaleRepository>();
+builder.Services.AddScoped<ISalesService, SalesApplicationService>();
 
 // Health Checks - sem DbContext check para evitar problemas de scoping
 builder.Services.AddHealthChecks();

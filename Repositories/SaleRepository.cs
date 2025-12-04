@@ -1,0 +1,420 @@
+using Dapper;
+using Microsoft.EntityFrameworkCore;
+using SolisApi.Data;
+using SolisApi.Models;
+using System.Data;
+
+namespace SolisApi.Repositories;
+
+/// <summary>
+/// Repository for Sale aggregate persistence
+/// Uses Dapper for clean SQL with dynamic tenant schemas
+/// </summary>
+public class SaleRepository : ISaleRepository
+{
+    private readonly SolisDbContext _context;
+
+    public SaleRepository(SolisDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<Sale?> GetByIdAsync(string tenantSchema, Guid id, CancellationToken cancellationToken = default)
+    {
+        var connection = _context.Database.GetDbConnection();
+        await EnsureOpenAsync(connection, cancellationToken);
+
+        var sql = $"SELECT * FROM {tenantSchema}.sales WHERE id = @Id";
+        var sale = await connection.QuerySingleOrDefaultAsync<Sale>(sql, new { Id = id });
+
+        if (sale != null)
+        {
+            await LoadAggregateAsync(connection, tenantSchema, sale, cancellationToken);
+        }
+
+        return sale;
+    }
+
+    public async Task<Sale?> GetByClientSaleIdAsync(string tenantSchema, Guid clientSaleId, CancellationToken cancellationToken = default)
+    {
+        var connection = _context.Database.GetDbConnection();
+        await EnsureOpenAsync(connection, cancellationToken);
+
+        var sql = $"SELECT * FROM {tenantSchema}.sales WHERE client_sale_id = @ClientSaleId";
+        var sale = await connection.QuerySingleOrDefaultAsync<Sale>(sql, new { ClientSaleId = clientSaleId });
+
+        if (sale != null)
+        {
+            await LoadAggregateAsync(connection, tenantSchema, sale, cancellationToken);
+        }
+
+        return sale;
+    }
+
+    public async Task<(List<Sale> Sales, int TotalCount)> GetAllAsync(
+        string tenantSchema,
+        Guid? storeId = null,
+        Guid? posId = null,
+        Guid? operatorId = null,
+        DateTime? dateFrom = null,
+        DateTime? dateTo = null,
+        string? status = null,
+        Guid? clientSaleId = null,
+        int page = 1,
+        int pageSize = 20,
+        CancellationToken cancellationToken = default)
+    {
+        var connection = _context.Database.GetDbConnection();
+        await EnsureOpenAsync(connection, cancellationToken);
+
+        var conditions = new List<string>();
+        var parameters = new DynamicParameters();
+
+        if (storeId.HasValue)
+        {
+            conditions.Add("store_id = @StoreId");
+            parameters.Add("StoreId", storeId.Value);
+        }
+        if (posId.HasValue)
+        {
+            conditions.Add("pos_id = @PosId");
+            parameters.Add("PosId", posId.Value);
+        }
+        if (operatorId.HasValue)
+        {
+            conditions.Add("operator_id = @OperatorId");
+            parameters.Add("OperatorId", operatorId.Value);
+        }
+        if (dateFrom.HasValue)
+        {
+            conditions.Add("sale_datetime >= @DateFrom");
+            parameters.Add("DateFrom", dateFrom.Value);
+        }
+        if (dateTo.HasValue)
+        {
+            conditions.Add("sale_datetime <= @DateTo");
+            parameters.Add("DateTo", dateTo.Value);
+        }
+        if (!string.IsNullOrEmpty(status))
+        {
+            conditions.Add("status = @Status");
+            parameters.Add("Status", status);
+        }
+        if (clientSaleId.HasValue)
+        {
+            conditions.Add("client_sale_id = @ClientSaleId");
+            parameters.Add("ClientSaleId", clientSaleId.Value);
+        }
+
+        var whereClause = conditions.Any() ? "WHERE " + string.Join(" AND ", conditions) : "";
+
+        // Count total
+        var countSql = $"SELECT COUNT(*) FROM {tenantSchema}.sales {whereClause}";
+        var totalCount = await connection.ExecuteScalarAsync<int>(countSql, parameters);
+
+        // Get paginated data
+        var offset = (page - 1) * pageSize;
+        parameters.Add("Limit", pageSize);
+        parameters.Add("Offset", offset);
+
+        var dataSql = $@"
+            SELECT * FROM {tenantSchema}.sales 
+            {whereClause}
+            ORDER BY sale_datetime DESC 
+            LIMIT @Limit OFFSET @Offset";
+
+        var sales = (await connection.QueryAsync<Sale>(dataSql, parameters)).ToList();
+
+        // Load aggregate data for each sale
+        foreach (var sale in sales)
+        {
+            await LoadAggregateAsync(connection, tenantSchema, sale, cancellationToken);
+        }
+
+        return (sales, totalCount);
+    }
+
+    public async Task SaveAsync(string tenantSchema, Sale sale, CancellationToken cancellationToken = default)
+    {
+        var connection = _context.Database.GetDbConnection();
+        await EnsureOpenAsync(connection, cancellationToken);
+
+        System.Data.Common.DbTransaction? transaction = null;
+        try
+        {
+            transaction = (connection as System.Data.Common.DbConnection)!.BeginTransaction();
+            // Save sale
+            var saleSql = $@"
+                INSERT INTO {tenantSchema}.sales 
+                (id, client_sale_id, store_id, pos_id, operator_id, sale_datetime, status, 
+                 subtotal, discount_total, tax_total, total, payment_status, created_at, updated_at)
+                VALUES (@Id, @ClientSaleId, @StoreId, @PosId, @OperatorId, @SaleDateTime, @Status, 
+                        @Subtotal, @DiscountTotal, @TaxTotal, @Total, @PaymentStatus, @CreatedAt, @UpdatedAt)";
+
+            await connection.ExecuteAsync(saleSql, new
+            {
+                sale.Id,
+                sale.ClientSaleId,
+                sale.StoreId,
+                sale.PosId,
+                sale.OperatorId,
+                sale.SaleDateTime,
+                sale.Status,
+                sale.Subtotal,
+                sale.DiscountTotal,
+                sale.TaxTotal,
+                sale.Total,
+                sale.PaymentStatus,
+                sale.CreatedAt,
+                sale.UpdatedAt
+            }, transaction);
+
+            // Save items and taxes
+            foreach (var item in sale.Items)
+            {
+                var itemSql = $@"
+                    INSERT INTO {tenantSchema}.sale_items 
+                    (id, sale_id, product_id, sku, description, quantity, unit_price, discount_amount, tax_amount, total, created_at)
+                    VALUES (@Id, @SaleId, @ProductId, @Sku, @Description, @Quantity, @UnitPrice, @DiscountAmount, @TaxAmount, @Total, @CreatedAt)";
+
+                await connection.ExecuteAsync(itemSql, new
+                {
+                    item.Id,
+                    item.SaleId,
+                    item.ProductId,
+                    item.Sku,
+                    item.Description,
+                    item.Quantity,
+                    item.UnitPrice,
+                    item.DiscountAmount,
+                    item.TaxAmount,
+                    item.Total,
+                    item.CreatedAt
+                }, transaction);
+
+                // Save taxes for item
+                foreach (var tax in item.Taxes)
+                {
+                    var taxSql = $@"
+                        INSERT INTO {tenantSchema}.sale_taxes 
+                        (id, sale_item_id, tax_type_id, tax_rule_id, base_amount, rate, amount, created_at)
+                        VALUES (@Id, @SaleItemId, @TaxTypeId, @TaxRuleId, @BaseAmount, @Rate, @Amount, @CreatedAt)";
+
+                    await connection.ExecuteAsync(taxSql, new
+                    {
+                        tax.Id,
+                        tax.SaleItemId,
+                        tax.TaxTypeId,
+                        tax.TaxRuleId,
+                        tax.BaseAmount,
+                        tax.Rate,
+                        tax.Amount,
+                        tax.CreatedAt
+                    }, transaction);
+                }
+            }
+
+            // Save payments
+            foreach (var payment in sale.Payments)
+            {
+                var paymentSql = $@"
+                    INSERT INTO {tenantSchema}.sale_payments 
+                    (id, sale_id, payment_type, amount, acquirer_txn_id, authorization_code, change_amount, status, processed_at, created_at)
+                    VALUES (@Id, @SaleId, @PaymentType, @Amount, @AcquirerTxnId, @AuthorizationCode, @ChangeAmount, @Status, @ProcessedAt, @CreatedAt)";
+
+                await connection.ExecuteAsync(paymentSql, new
+                {
+                    payment.Id,
+                    payment.SaleId,
+                    payment.PaymentType,
+                    payment.Amount,
+                    payment.AcquirerTxnId,
+                    payment.AuthorizationCode,
+                    payment.ChangeAmount,
+                    payment.Status,
+                    payment.ProcessedAt,
+                    payment.CreatedAt
+                }, transaction);
+            }
+
+            transaction.Commit();
+        }
+        catch
+        {
+            transaction?.Rollback();
+            throw;
+        }
+        finally
+        {
+            transaction?.Dispose();
+        }
+    }
+
+    public async Task UpdateAsync(string tenantSchema, Sale sale, CancellationToken cancellationToken = default)
+    {
+        var connection = _context.Database.GetDbConnection();
+        await EnsureOpenAsync(connection, cancellationToken);
+
+        System.Data.Common.DbTransaction? transaction = null;
+        try
+        {
+            transaction = (connection as System.Data.Common.DbConnection)!.BeginTransaction();
+            // Update sale
+            var updateSql = $@"
+                UPDATE {tenantSchema}.sales SET 
+                    status = @Status, 
+                    payment_status = @PaymentStatus, 
+                    subtotal = @Subtotal, 
+                    discount_total = @DiscountTotal, 
+                    tax_total = @TaxTotal, 
+                    total = @Total, 
+                    updated_at = @UpdatedAt 
+                WHERE id = @Id";
+
+            await connection.ExecuteAsync(updateSql, new
+            {
+                sale.Status,
+                sale.PaymentStatus,
+                sale.Subtotal,
+                sale.DiscountTotal,
+                sale.TaxTotal,
+                sale.Total,
+                sale.UpdatedAt,
+                sale.Id
+            }, transaction);
+
+            // Get existing payment IDs
+            var existingPaymentIdsSql = $"SELECT id FROM {tenantSchema}.sale_payments WHERE sale_id = @SaleId";
+            var existingPaymentIds = (await connection.QueryAsync<Guid>(existingPaymentIdsSql, 
+                new { SaleId = sale.Id }, transaction)).ToList();
+
+            // Save new payments
+            foreach (var payment in sale.Payments.Where(p => !existingPaymentIds.Contains(p.Id)))
+            {
+                var paymentSql = $@"
+                    INSERT INTO {tenantSchema}.sale_payments 
+                    (id, sale_id, payment_type, amount, acquirer_txn_id, authorization_code, change_amount, status, processed_at, created_at)
+                    VALUES (@Id, @SaleId, @PaymentType, @Amount, @AcquirerTxnId, @AuthorizationCode, @ChangeAmount, @Status, @ProcessedAt, @CreatedAt)";
+
+                await connection.ExecuteAsync(paymentSql, new
+                {
+                    payment.Id,
+                    payment.SaleId,
+                    payment.PaymentType,
+                    payment.Amount,
+                    payment.AcquirerTxnId,
+                    payment.AuthorizationCode,
+                    payment.ChangeAmount,
+                    payment.Status,
+                    payment.ProcessedAt,
+                    payment.CreatedAt
+                }, transaction);
+            }
+
+            // Save cancellation if exists and is new
+            if (sale.Cancellation != null)
+            {
+                var checkCancellationSql = $"SELECT COUNT(*) FROM {tenantSchema}.sale_cancellations WHERE sale_id = @SaleId";
+                var cancellationExists = await connection.ExecuteScalarAsync<int>(checkCancellationSql, 
+                    new { SaleId = sale.Id }, transaction) > 0;
+
+                if (!cancellationExists)
+                {
+                    var cancellationSql = $@"
+                        INSERT INTO {tenantSchema}.sale_cancellations 
+                        (id, sale_id, reason, canceled_at, source, cancellation_type, refund_amount, created_at)
+                        VALUES (@Id, @SaleId, @Reason, @CanceledAt, @Source, @CancellationType, @RefundAmount, @CreatedAt)";
+
+                    await connection.ExecuteAsync(cancellationSql, new
+                    {
+                        sale.Cancellation.Id,
+                        sale.Cancellation.SaleId,
+                        sale.Cancellation.Reason,
+                        sale.Cancellation.CanceledAt,
+                        sale.Cancellation.Source,
+                        sale.Cancellation.CancellationType,
+                        sale.Cancellation.RefundAmount,
+                        sale.Cancellation.CreatedAt
+                    }, transaction);
+                }
+            }
+
+            transaction.Commit();
+        }
+        catch
+        {
+            transaction?.Rollback();
+            throw;
+        }
+        finally
+        {
+            transaction?.Dispose();
+        }
+    }
+
+    private async Task LoadAggregateAsync(IDbConnection connection, string tenantSchema, Sale sale, CancellationToken cancellationToken)
+    {
+        // Load items
+        var itemsSql = $"SELECT * FROM {tenantSchema}.sale_items WHERE sale_id = @SaleId";
+        var items = (await connection.QueryAsync<SaleItem>(itemsSql, new { SaleId = sale.Id })).ToList();
+
+        foreach (var item in items)
+        {
+            // Load taxes for item
+            var taxesSql = $"SELECT * FROM {tenantSchema}.sale_taxes WHERE sale_item_id = @SaleItemId";
+            var taxes = (await connection.QueryAsync<SaleTax>(taxesSql, new { SaleItemId = item.Id })).ToList();
+
+            // Use reflection to set private collection
+            var taxesField = typeof(SaleItem).GetField("_taxes", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (taxesField != null)
+            {
+                var taxesList = (List<SaleTax>)taxesField.GetValue(item)!;
+                taxesList.AddRange(taxes);
+            }
+        }
+
+        // Load payments
+        var paymentsSql = $"SELECT * FROM {tenantSchema}.sale_payments WHERE sale_id = @SaleId";
+        var payments = (await connection.QueryAsync<SalePayment>(paymentsSql, new { SaleId = sale.Id })).ToList();
+
+        // Load cancellation
+        var cancellationSql = $"SELECT * FROM {tenantSchema}.sale_cancellations WHERE sale_id = @SaleId";
+        var cancellation = await connection.QuerySingleOrDefaultAsync<SaleCancellation>(cancellationSql, new { SaleId = sale.Id });
+
+        // Use reflection to populate aggregate
+        var itemsField = typeof(Sale).GetField("_items", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        if (itemsField != null)
+        {
+            var itemsList = (List<SaleItem>)itemsField.GetValue(sale)!;
+            itemsList.AddRange(items);
+        }
+
+        var paymentsField = typeof(Sale).GetField("_payments", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        if (paymentsField != null)
+        {
+            var paymentsList = (List<SalePayment>)paymentsField.GetValue(sale)!;
+            paymentsList.AddRange(payments);
+        }
+
+        if (cancellation != null)
+        {
+            var cancellationProp = typeof(Sale).GetProperty("Cancellation")!;
+            cancellationProp.SetValue(sale, cancellation);
+        }
+    }
+
+    private static async Task EnsureOpenAsync(IDbConnection connection, CancellationToken cancellationToken)
+    {
+        if (connection.State != ConnectionState.Open)
+        {
+            if (connection is System.Data.Common.DbConnection dbConnection)
+            {
+                await dbConnection.OpenAsync(cancellationToken);
+            }
+            else
+            {
+                connection.Open();
+            }
+        }
+    }
+}
