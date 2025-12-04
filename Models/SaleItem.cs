@@ -76,6 +76,9 @@ public class SaleItem
         if (discountAmount < 0)
             throw new ArgumentException("Discount cannot be negative", nameof(discountAmount));
 
+        // Calculate initial total (without taxes)
+        var initialTotal = (quantity * unitPrice) - discountAmount;
+
         var item = new SaleItem
         {
             Id = Guid.NewGuid(),
@@ -83,12 +86,13 @@ public class SaleItem
             Quantity = quantity,
             UnitPrice = unitPrice,
             DiscountAmount = discountAmount,
+            TaxAmount = 0,
+            Total = initialTotal,
             Sku = sku,
             Description = description,
             CreatedAt = DateTime.UtcNow
         };
 
-        item.RecalculateTotal();
         return item;
     }
 
@@ -105,6 +109,33 @@ public class SaleItem
     {
         TaxAmount = _taxes.Sum(t => t.Amount);
         Total = (Quantity * UnitPrice) - DiscountAmount + TaxAmount;
+    }
+
+    // For Dapper deserialization (snake_case columns from PostgreSQL)
+    internal SaleItem(
+        Guid id,
+        Guid sale_id,
+        Guid product_id,
+        string? sku,
+        string? description,
+        decimal quantity,
+        decimal unit_price,
+        decimal discount_amount,
+        decimal tax_amount,
+        decimal total,
+        DateTime created_at)
+    {
+        Id = id;
+        SaleId = sale_id;
+        ProductId = product_id;
+        Sku = sku;
+        Description = description;
+        Quantity = quantity;
+        UnitPrice = unit_price;
+        DiscountAmount = discount_amount;
+        TaxAmount = tax_amount;
+        Total = total;
+        CreatedAt = created_at;
     }
 
     // For EF Core deserialization
