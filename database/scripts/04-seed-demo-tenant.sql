@@ -232,7 +232,7 @@ VALUES (
     'store',
     'Lojas',
     'stores',
-    'Cadastros',
+    'Configurações',
     'store',
     'Gerenciamento de lojas/filiais',
     true, true, true, true
