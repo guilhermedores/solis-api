@@ -194,7 +194,7 @@ try {
 Write-Host "TEST 7: Cancel Sale" -ForegroundColor Cyan
 
 $cancelBody = @{
-    reason = "Customer requested cancellation"
+    reason = "Cliente solicitou o cancelamento"
     source = "api"
     cancellationType = "total"
     refundAmount = 200.00
