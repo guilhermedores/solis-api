@@ -52,6 +52,7 @@ $productId1 = "40000000-0000-0000-0000-000000000001"
 $productId2 = "40000000-0000-0000-0000-000000000002"
 $operatorId = "30000000-0000-0000-0000-000000000001"
 $posId = "55555555-5555-5555-5555-555555555555"
+$paymentMethodId = "60000000-0000-0000-0000-000000000001" # À Vista (Dinheiro)
 
 # ==================== TEST 1: Create Sale (Pending) ====================
 
@@ -65,16 +66,12 @@ $createSaleBody = @{
     items = @(
         @{
             productId = $productId1
-            sku = "PROD-001"
-            description = "Product 1"
             quantity = 2
             unitPrice = 50.00
             discountAmount = 5.00
         },
         @{
             productId = $productId2
-            sku = "PROD-002"
-            description = "Product 2"
             quantity = 1
             unitPrice = 100.00
             discountAmount = 0
@@ -118,7 +115,7 @@ try {
 Write-Host "TEST 4: Add Payment to Sale" -ForegroundColor Cyan
 
 $addPaymentBody = @{
-    paymentType = "card"
+    paymentMethodId = $paymentMethodId
     amount = 100.00
     acquirerTxnId = "TXN-12345"
     authorizationCode = "AUTH-67890"
@@ -135,14 +132,14 @@ try {
 
 Write-Host "TEST 5: Add Second Payment to Complete Sale" -ForegroundColor Cyan
 
-$addPaymentBody2 = @{
-    paymentType = "cash"
+$addPayment2Body = @{
+    paymentMethodId = $paymentMethodId
     amount = 95.00
     changeAmount = 5.00
 } | ConvertTo-Json
 
 try {
-    $response = Invoke-RestMethod -Uri "$BaseUrl/api/sales/$saleId/payments" -Method Post -Headers $headers -Body $addPaymentBody2
+    $response = Invoke-RestMethod -Uri "$BaseUrl/api/sales/$saleId/payments" -Method Post -Headers $headers -Body $addPayment2Body
     Write-TestResult "Add Payment (Complete)" $true $response 200
     
     # Check if sale is completed
@@ -166,8 +163,6 @@ $createCompleteBody = @{
     items = @(
         @{
             productId = $productId1
-            sku = "PROD-003"
-            description = "Product 3"
             quantity = 1
             unitPrice = 200.00
             discountAmount = 0
@@ -175,7 +170,7 @@ $createCompleteBody = @{
     )
     payments = @(
         @{
-            paymentType = "pix"
+            paymentMethodId = $paymentMethodId
             amount = 200.00
             acquirerTxnId = "PIX-98765"
         }
@@ -252,8 +247,6 @@ $idempotentBody = @{
     items = @(
         @{
             productId = $productId1
-            sku = "IDEMPOTENT-001"
-            description = "Idempotent Product"
             quantity = 1
             unitPrice = 50.00
             discountAmount = 0

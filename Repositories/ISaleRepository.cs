@@ -23,4 +23,10 @@ public interface ISaleRepository
         CancellationToken cancellationToken = default);
     Task SaveAsync(string tenantSchema, Sale sale, CancellationToken cancellationToken = default);
     Task UpdateAsync(string tenantSchema, Sale sale, CancellationToken cancellationToken = default);
+    Task<ProductInfo?> GetProductByIdAsync(string tenantSchema, Guid productId, CancellationToken cancellationToken = default);
+    Task<PaymentMethodInfo?> GetPaymentMethodByIdAsync(string tenantSchema, Guid paymentMethodId, CancellationToken cancellationToken = default);
 }
+
+// DTOs para dados auxiliares
+public record ProductInfo(Guid Id, string? Sku, string Description);
+public record PaymentMethodInfo(Guid Id, string PaymentTypeCode, string Description);

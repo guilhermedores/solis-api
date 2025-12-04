@@ -60,13 +60,18 @@ public class SalesApplicationService : ISalesService
         // Add items with taxes
         foreach (var itemRequest in request.Items)
         {
+            // Buscar dados do produto via ProductId
+            var product = await _saleRepository.GetProductByIdAsync(tenantSchema, itemRequest.ProductId, cancellationToken);
+            if (product == null)
+                throw new InvalidOperationException($"Product {itemRequest.ProductId} not found");
+
             var item = SaleItem.Create(
                 itemRequest.ProductId,
                 itemRequest.Quantity,
                 itemRequest.UnitPrice,
                 itemRequest.DiscountAmount,
-                itemRequest.Sku,
-                itemRequest.Description);
+                product.Sku,
+                product.Description);
 
             // Calculate taxes using domain service
             var baseAmount = (item.Quantity * item.UnitPrice) - item.DiscountAmount;
@@ -93,7 +98,7 @@ public class SalesApplicationService : ISalesService
             foreach (var paymentRequest in request.Payments)
             {
                 var payment = SalePayment.Create(
-                    paymentRequest.PaymentType,
+                    paymentRequest.PaymentMethodId,
                     paymentRequest.Amount,
                     paymentRequest.AcquirerTxnId,
                     paymentRequest.AuthorizationCode,
@@ -187,7 +192,7 @@ public class SalesApplicationService : ISalesService
 
         // Create payment using factory
         var payment = SalePayment.Create(
-            request.PaymentType,
+            request.PaymentMethodId,
             request.Amount,
             request.AcquirerTxnId,
             request.AuthorizationCode,
@@ -335,7 +340,7 @@ public class SalesApplicationService : ISalesService
             Payments = sale.Payments.Select(p => new SalePaymentDto
             {
                 Id = p.Id,
-                PaymentType = p.PaymentType,
+                PaymentMethodId = p.PaymentMethodId,
                 Amount = p.Amount,
                 AcquirerTxnId = p.AcquirerTxnId,
                 AuthorizationCode = p.AuthorizationCode,

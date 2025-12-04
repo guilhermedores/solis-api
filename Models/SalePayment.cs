@@ -18,9 +18,8 @@ public class SalePayment
     public Guid SaleId { get; internal set; }
 
     [Required]
-    [MaxLength(50)]
-    [Column("payment_type")]
-    public string PaymentType { get; private set; } = string.Empty; // cash, card, pix, voucher
+    [Column("payment_method_id")]
+    public Guid PaymentMethodId { get; private set; }
 
     [Required]
     [Column("amount", TypeName = "numeric(12,2)")]
@@ -54,7 +53,7 @@ public class SalePayment
 
     // Factory method
     public static SalePayment Create(
-        string paymentType,
+        Guid paymentMethodId,
         decimal amount,
         string? acquirerTxnId = null,
         string? authorizationCode = null,
@@ -63,14 +62,13 @@ public class SalePayment
         if (amount <= 0)
             throw new ArgumentException("Payment amount must be greater than zero", nameof(amount));
 
-        var validTypes = new[] { "cash", "card", "pix", "voucher" };
-        if (!validTypes.Contains(paymentType))
-            throw new ArgumentException($"Invalid payment type: {paymentType}", nameof(paymentType));
+        if (paymentMethodId == Guid.Empty)
+            throw new ArgumentException("Payment method ID is required", nameof(paymentMethodId));
 
         return new SalePayment
         {
             Id = Guid.NewGuid(),
-            PaymentType = paymentType,
+            PaymentMethodId = paymentMethodId,
             Amount = amount,
             AcquirerTxnId = acquirerTxnId,
             AuthorizationCode = authorizationCode,

@@ -217,16 +217,16 @@ public class SaleRepository : ISaleRepository
             // Save payments
             foreach (var payment in sale.Payments)
             {
-                var paymentSql = $@"
+                var newPaymentSql = $@"
                     INSERT INTO {tenantSchema}.sale_payments 
-                    (id, sale_id, payment_type, amount, acquirer_txn_id, authorization_code, change_amount, status, processed_at, created_at)
-                    VALUES (@Id, @SaleId, @PaymentType, @Amount, @AcquirerTxnId, @AuthorizationCode, @ChangeAmount, @Status, @ProcessedAt, @CreatedAt)";
+                    (id, sale_id, payment_method_id, amount, acquirer_txn_id, authorization_code, change_amount, status, processed_at, created_at)
+                    VALUES (@Id, @SaleId, @PaymentMethodId, @Amount, @AcquirerTxnId, @AuthorizationCode, @ChangeAmount, @Status, @ProcessedAt, @CreatedAt)";
 
-                await connection.ExecuteAsync(paymentSql, new
+                await connection.ExecuteAsync(newPaymentSql, new
                 {
                     payment.Id,
                     payment.SaleId,
-                    payment.PaymentType,
+                    payment.PaymentMethodId,
                     payment.Amount,
                     payment.AcquirerTxnId,
                     payment.AuthorizationCode,
@@ -293,14 +293,14 @@ public class SaleRepository : ISaleRepository
             {
                 var paymentSql = $@"
                     INSERT INTO {tenantSchema}.sale_payments 
-                    (id, sale_id, payment_type, amount, acquirer_txn_id, authorization_code, change_amount, status, processed_at, created_at)
-                    VALUES (@Id, @SaleId, @PaymentType, @Amount, @AcquirerTxnId, @AuthorizationCode, @ChangeAmount, @Status, @ProcessedAt, @CreatedAt)";
+                    (id, sale_id, payment_method_id, amount, acquirer_txn_id, authorization_code, change_amount, status, processed_at, created_at)
+                    VALUES (@Id, @SaleId, @PaymentMethodId, @Amount, @AcquirerTxnId, @AuthorizationCode, @ChangeAmount, @Status, @ProcessedAt, @CreatedAt)";
 
                 await connection.ExecuteAsync(paymentSql, new
                 {
                     payment.Id,
                     payment.SaleId,
-                    payment.PaymentType,
+                    payment.PaymentMethodId,
                     payment.Amount,
                     payment.AcquirerTxnId,
                     payment.AuthorizationCode,
@@ -401,6 +401,39 @@ public class SaleRepository : ISaleRepository
             var cancellationProp = typeof(Sale).GetProperty("Cancellation")!;
             cancellationProp.SetValue(sale, cancellation);
         }
+    }
+
+    public async Task<ProductInfo?> GetProductByIdAsync(string tenantSchema, Guid productId, CancellationToken cancellationToken = default)
+    {
+        var connection = _context.Database.GetDbConnection();
+        await EnsureOpenAsync(connection, cancellationToken);
+
+        var sql = $@"
+            SELECT 
+                id as Id,
+                internal_code as Sku,
+                description as Description
+            FROM {tenantSchema}.products 
+            WHERE id = @ProductId";
+
+        return await connection.QuerySingleOrDefaultAsync<ProductInfo>(sql, new { ProductId = productId });
+    }
+
+    public async Task<PaymentMethodInfo?> GetPaymentMethodByIdAsync(string tenantSchema, Guid paymentMethodId, CancellationToken cancellationToken = default)
+    {
+        var connection = _context.Database.GetDbConnection();
+        await EnsureOpenAsync(connection, cancellationToken);
+
+        var sql = $@"
+            SELECT 
+                pm.id as Id,
+                pt.code as PaymentTypeCode,
+                pm.description as Description
+            FROM {tenantSchema}.payment_methods pm
+            JOIN {tenantSchema}.payment_types pt ON pm.payment_type_id = pt.id
+            WHERE pm.id = @PaymentMethodId";
+
+        return await connection.QuerySingleOrDefaultAsync<PaymentMethodInfo>(sql, new { PaymentMethodId = paymentMethodId });
     }
 
     private static async Task EnsureOpenAsync(IDbConnection connection, CancellationToken cancellationToken)

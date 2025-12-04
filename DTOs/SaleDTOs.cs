@@ -16,8 +16,6 @@ public class CreateSaleRequest
 public class SaleItemRequest
 {
     public Guid ProductId { get; set; }
-    public string? Sku { get; set; }
-    public string? Description { get; set; }
     public decimal Quantity { get; set; }
     public decimal UnitPrice { get; set; }
     public decimal DiscountAmount { get; set; } = 0;
@@ -25,7 +23,7 @@ public class SaleItemRequest
 
 public class SalePaymentRequest
 {
-    public string PaymentType { get; set; } = string.Empty; // cash, card, pix, voucher
+    public Guid PaymentMethodId { get; set; }
     public decimal Amount { get; set; }
     public string? AcquirerTxnId { get; set; }
     public string? AuthorizationCode { get; set; }
@@ -91,7 +89,7 @@ public class SaleItemDto
 public class SalePaymentDto
 {
     public Guid Id { get; set; }
-    public string PaymentType { get; set; } = string.Empty;
+    public Guid PaymentMethodId { get; set; }
     public decimal Amount { get; set; }
     public string? AcquirerTxnId { get; set; }
     public string? AuthorizationCode { get; set; }
