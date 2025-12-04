@@ -410,8 +410,18 @@ public class SaleRepository : ISaleRepository
 
         foreach (var item in items)
         {
-            // Load taxes for item
-            var taxesSql = $"SELECT * FROM {tenantSchema}.sale_taxes WHERE sale_item_id = @SaleItemId";
+            // Load taxes for item (explicit columns)
+            var taxesSql = $@"
+                SELECT 
+                    id AS Id,
+                    sale_item_id AS SaleItemId,
+                    tax_type_id AS TaxTypeId,
+                    tax_rule_id AS TaxRuleId,
+                    base_amount AS BaseAmount,
+                    rate AS Rate,
+                    amount AS Amount,
+                    created_at AS CreatedAt
+                FROM {tenantSchema}.sale_taxes WHERE sale_item_id = @SaleItemId";
             var taxes = (await connection.QueryAsync<SaleTax>(taxesSql, new { SaleItemId = item.Id })).ToList();
 
             // Use reflection to set private collection
@@ -423,12 +433,34 @@ public class SaleRepository : ISaleRepository
             }
         }
 
-        // Load payments
-        var paymentsSql = $"SELECT * FROM {tenantSchema}.sale_payments WHERE sale_id = @SaleId";
+        // Load payments (explicit columns)
+        var paymentsSql = $@"
+            SELECT 
+                id AS Id,
+                sale_id AS SaleId,
+                payment_method_id AS PaymentMethodId,
+                amount AS Amount,
+                acquirer_txn_id AS AcquirerTxnId,
+                authorization_code AS AuthorizationCode,
+                change_amount AS ChangeAmount,
+                status AS Status,
+                processed_at AS ProcessedAt,
+                created_at AS CreatedAt
+            FROM {tenantSchema}.sale_payments WHERE sale_id = @SaleId";
         var payments = (await connection.QueryAsync<SalePayment>(paymentsSql, new { SaleId = sale.Id })).ToList();
 
-        // Load cancellation
-        var cancellationSql = $"SELECT * FROM {tenantSchema}.sale_cancellations WHERE sale_id = @SaleId";
+        // Load cancellation (explicit columns)
+        var cancellationSql = $@"
+            SELECT 
+                id AS Id,
+                sale_id AS SaleId,
+                reason AS Reason,
+                canceled_at AS CanceledAt,
+                source AS Source,
+                cancellation_type AS CancellationType,
+                refund_amount AS RefundAmount,
+                created_at AS CreatedAt
+            FROM {tenantSchema}.sale_cancellations WHERE sale_id = @SaleId";
         var cancellation = await connection.QuerySingleOrDefaultAsync<SaleCancellation>(cancellationSql, new { SaleId = sale.Id });
 
         // Use reflection to populate aggregate
