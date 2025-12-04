@@ -162,6 +162,8 @@ public class Sale : Entity
         UpdatedAt = DateTime.UtcNow;
     }
 
+
+
     // Update payment status based on payments
     private void UpdatePaymentStatus()
     {

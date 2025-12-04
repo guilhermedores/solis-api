@@ -15,41 +15,41 @@ public class SaleItem
 
     [Required]
     [Column("sale_id")]
-    public Guid SaleId { get; internal set; }
+    public Guid SaleId { get; set; }
 
     [Required]
     [Column("product_id")]
-    public Guid ProductId { get; private set; }
+    public Guid ProductId { get; set; }
 
     [MaxLength(100)]
     [Column("sku")]
-    public string? Sku { get; private set; }
+    public string? Sku { get; set; }
 
     [Column("description")]
-    public string? Description { get; private set; }
+    public string? Description { get; set; }
 
     [Required]
     [Column("quantity", TypeName = "numeric(12,4)")]
-    public decimal Quantity { get; private set; }
+    public decimal Quantity { get; set; }
 
     [Required]
     [Column("unit_price", TypeName = "numeric(12,4)")]
-    public decimal UnitPrice { get; private set; }
+    public decimal UnitPrice { get; set; }
 
     [Required]
     [Column("discount_amount", TypeName = "numeric(12,2)")]
-    public decimal DiscountAmount { get; private set; }
+    public decimal DiscountAmount { get; set; }
 
     [Required]
     [Column("tax_amount", TypeName = "numeric(12,2)")]
-    public decimal TaxAmount { get; private set; }
+    public decimal TaxAmount { get; set; }
 
     [Required]
     [Column("total", TypeName = "numeric(12,2)")]
-    public decimal Total { get; private set; }
+    public decimal Total { get; set; }
 
     [Column("created_at")]
-    public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
     [ForeignKey("SaleId")]
@@ -111,33 +111,6 @@ public class SaleItem
         Total = (Quantity * UnitPrice) - DiscountAmount + TaxAmount;
     }
 
-    // For Dapper deserialization (snake_case columns from PostgreSQL)
-    internal SaleItem(
-        Guid id,
-        Guid sale_id,
-        Guid product_id,
-        string? sku,
-        string? description,
-        decimal quantity,
-        decimal unit_price,
-        decimal discount_amount,
-        decimal tax_amount,
-        decimal total,
-        DateTime created_at)
-    {
-        Id = id;
-        SaleId = sale_id;
-        ProductId = product_id;
-        Sku = sku;
-        Description = description;
-        Quantity = quantity;
-        UnitPrice = unit_price;
-        DiscountAmount = discount_amount;
-        TaxAmount = tax_amount;
-        Total = total;
-        CreatedAt = created_at;
-    }
-
-    // For EF Core deserialization
+    // For Dapper/EF Core deserialization
     private SaleItem() { }
 }

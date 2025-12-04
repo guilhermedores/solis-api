@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SolisApi.Data;
 using SolisApi.Models;
 using System.Data;
+using System.Reflection;
 
 namespace SolisApi.Repositories;
 
@@ -354,7 +355,7 @@ public class SaleRepository : ISaleRepository
 
     private async Task LoadAggregateAsync(IDbConnection connection, string tenantSchema, Sale sale, CancellationToken cancellationToken)
     {
-        // Load items
+        // Load items - Dapper will map columns to properties automatically
         var itemsSql = $"SELECT * FROM {tenantSchema}.sale_items WHERE sale_id = @SaleId";
         var items = (await connection.QueryAsync<SaleItem>(itemsSql, new { SaleId = sale.Id })).ToList();
 
@@ -365,7 +366,7 @@ public class SaleRepository : ISaleRepository
             var taxes = (await connection.QueryAsync<SaleTax>(taxesSql, new { SaleItemId = item.Id })).ToList();
 
             // Use reflection to set private collection
-            var taxesField = typeof(SaleItem).GetField("_taxes", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var taxesField = typeof(SaleItem).GetField("_taxes", BindingFlags.NonPublic | BindingFlags.Instance);
             if (taxesField != null)
             {
                 var taxesList = (List<SaleTax>)taxesField.GetValue(item)!;
@@ -382,14 +383,14 @@ public class SaleRepository : ISaleRepository
         var cancellation = await connection.QuerySingleOrDefaultAsync<SaleCancellation>(cancellationSql, new { SaleId = sale.Id });
 
         // Use reflection to populate aggregate
-        var itemsField = typeof(Sale).GetField("_items", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var itemsField = typeof(Sale).GetField("_items", BindingFlags.NonPublic | BindingFlags.Instance);
         if (itemsField != null)
         {
             var itemsList = (List<SaleItem>)itemsField.GetValue(sale)!;
             itemsList.AddRange(items);
         }
 
-        var paymentsField = typeof(Sale).GetField("_payments", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var paymentsField = typeof(Sale).GetField("_payments", BindingFlags.NonPublic | BindingFlags.Instance);
         if (paymentsField != null)
         {
             var paymentsList = (List<SalePayment>)paymentsField.GetValue(sale)!;
