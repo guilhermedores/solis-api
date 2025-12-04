@@ -315,6 +315,7 @@ public class SalesApplicationService : ISalesService
             Total = sale.Total,
             CreatedAt = sale.CreatedAt,
             UpdatedAt = sale.UpdatedAt,
+            OrderNumber = sale.OrderNumber,
             Items = sale.Items.Select(i => new SaleItemDto
             {
                 Id = i.Id,

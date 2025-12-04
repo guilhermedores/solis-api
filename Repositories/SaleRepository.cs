@@ -137,6 +137,7 @@ public class SaleRepository : ISaleRepository
         var dataSql = $@"
             SELECT 
                 id AS Id,
+                order_number AS OrderNumber,                
                 client_sale_id AS ClientSaleId,
                 store_id AS StoreId,
                 pos_id AS PosId,

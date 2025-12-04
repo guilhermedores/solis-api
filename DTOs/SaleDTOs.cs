@@ -53,6 +53,7 @@ public class SaleSyncRequest
 
 public class SaleResponse
 {
+    public int OrderNumber { get; set; }
     public Guid Id { get; set; }
     public Guid? ClientSaleId { get; set; }
     public Guid StoreId { get; set; }

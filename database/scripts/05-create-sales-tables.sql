@@ -17,12 +17,16 @@ CREATE OR REPLACE FUNCTION create_sales_tables(p_schema_name VARCHAR)
 RETURNS VOID AS $$
 BEGIN
     
+    EXECUTE format('CREATE SEQUENCE IF NOT EXISTS %I.sales_order_number_seq', p_schema_name);
+
     -- =============================================
     -- SALES TABLE (Header da venda)
     -- =============================================
     EXECUTE format('
+        -- Create sequence for order_number if not exists        
         CREATE TABLE IF NOT EXISTS %I.sales (
             id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            order_number INTEGER NOT NULL UNIQUE DEFAULT nextval(''%I.sales_order_number_seq''),
             client_sale_id UUID NULL,
             store_id UUID NOT NULL,
             pos_id UUID NULL,
@@ -49,7 +53,7 @@ BEGIN
                 tax_total >= 0 AND 
                 total >= 0
             )
-        )', p_schema_name, p_schema_name, p_schema_name);
+        )', p_schema_name, p_schema_name, p_schema_name, p_schema_name);
     
     -- Indexes for sales table
     EXECUTE format('CREATE INDEX IF NOT EXISTS idx_sales_client_sale_id ON %I.sales(client_sale_id) WHERE client_sale_id IS NOT NULL', p_schema_name);
