@@ -25,7 +25,23 @@ public class SaleRepository : ISaleRepository
         var connection = _context.Database.GetDbConnection();
         await EnsureOpenAsync(connection, cancellationToken);
 
-        var sql = $"SELECT * FROM {tenantSchema}.sales WHERE id = @Id";
+        var sql = $@"
+            SELECT 
+                id AS Id,
+                client_sale_id AS ClientSaleId,
+                store_id AS StoreId,
+                pos_id AS PosId,
+                operator_id AS OperatorId,
+                sale_datetime AS SaleDateTime,
+                status AS Status,
+                subtotal AS Subtotal,
+                discount_total AS DiscountTotal,
+                tax_total AS TaxTotal,
+                total AS Total,
+                payment_status AS PaymentStatus,
+                created_at AS CreatedAt,
+                updated_at AS UpdatedAt
+            FROM {tenantSchema}.sales WHERE id = @Id";
         var sale = await connection.QuerySingleOrDefaultAsync<Sale>(sql, new { Id = id });
 
         if (sale != null)
@@ -119,7 +135,22 @@ public class SaleRepository : ISaleRepository
         parameters.Add("Offset", offset);
 
         var dataSql = $@"
-            SELECT * FROM {tenantSchema}.sales 
+            SELECT 
+                id AS Id,
+                client_sale_id AS ClientSaleId,
+                store_id AS StoreId,
+                pos_id AS PosId,
+                operator_id AS OperatorId,
+                sale_datetime AS SaleDateTime,
+                status AS Status,
+                subtotal AS Subtotal,
+                discount_total AS DiscountTotal,
+                tax_total AS TaxTotal,
+                total AS Total,
+                payment_status AS PaymentStatus,
+                created_at AS CreatedAt,
+                updated_at AS UpdatedAt
+            FROM {tenantSchema}.sales 
             {whereClause}
             ORDER BY sale_datetime DESC 
             LIMIT @Limit OFFSET @Offset";
@@ -355,8 +386,25 @@ public class SaleRepository : ISaleRepository
 
     private async Task LoadAggregateAsync(IDbConnection connection, string tenantSchema, Sale sale, CancellationToken cancellationToken)
     {
-        // Load items - Dapper will map columns to properties automatically
-        var itemsSql = $"SELECT * FROM {tenantSchema}.sale_items WHERE sale_id = @SaleId";
+        // Load items with unit of measure from products - explicit columns to avoid mapping issues
+        var itemsSql = $@"
+            SELECT 
+                si.id AS Id,
+                si.sale_id AS SaleId,
+                si.product_id AS ProductId,
+                si.sku AS Sku,
+                si.description AS Description,
+                si.quantity AS Quantity,
+                si.unit_price AS UnitPrice,
+                si.discount_amount AS DiscountAmount,
+                si.tax_amount AS TaxAmount,
+                si.total AS Total,
+                si.created_at AS CreatedAt,
+                u.code AS UnitOfMeasure
+            FROM {tenantSchema}.sale_items si
+            LEFT JOIN {tenantSchema}.products p ON si.product_id = p.id
+            LEFT JOIN {tenantSchema}.unit_of_measures u ON p.unit_of_measure_id = u.id
+            WHERE si.sale_id = @SaleId";
         var items = (await connection.QueryAsync<SaleItem>(itemsSql, new { SaleId = sale.Id })).ToList();
 
         foreach (var item in items)

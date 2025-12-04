@@ -321,6 +321,7 @@ public class SalesApplicationService : ISalesService
                 ProductId = i.ProductId,
                 Sku = i.Sku,
                 Description = i.Description,
+                UnitOfMeasure = i.UnitOfMeasure,
                 Quantity = i.Quantity,
                 UnitPrice = i.UnitPrice,
                 DiscountAmount = i.DiscountAmount,

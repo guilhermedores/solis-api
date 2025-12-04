@@ -78,6 +78,7 @@ public class SaleItemDto
     public Guid ProductId { get; set; }
     public string? Sku { get; set; }
     public string? Description { get; set; }
+    public string? UnitOfMeasure { get; set; }
     public decimal Quantity { get; set; }
     public decimal UnitPrice { get; set; }
     public decimal DiscountAmount { get; set; }

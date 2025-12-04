@@ -28,6 +28,10 @@ public class SaleItem
     [Column("description")]
     public string? Description { get; set; }
 
+    [MaxLength(10)]
+    [Column("unit_of_measure")]
+    public string? UnitOfMeasure { get; set; }
+
     [Required]
     [Column("quantity", TypeName = "numeric(12,4)")]
     public decimal Quantity { get; set; }
