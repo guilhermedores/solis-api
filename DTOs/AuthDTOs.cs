@@ -7,6 +7,7 @@ public class TokenPayload
 {
     public Guid UserId { get; set; }
     public Guid EmpresaId { get; set; }
+    public Guid StoreId { get; set; }
     public Guid TenantId { get; set; }
     public string Tenant { get; set; } = string.Empty; // subdomain
     public string Role { get; set; } = string.Empty; // admin, manager, operator
@@ -83,4 +84,26 @@ public class ErrorResponse
 {
     public bool Success { get; set; } = false;
     public string Error { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Request para gerar token de agente PDV
+/// </summary>
+public class GenerateAgentTokenRequest
+{
+    public Guid StoreId { get; set; }
+    public string AgentName { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Response do token de agente PDV
+/// </summary>
+public class GenerateAgentTokenResponse
+{
+    public string Token { get; set; } = string.Empty;
+    public string TenantId { get; set; } = string.Empty;
+    public string Tenant { get; set; } = string.Empty;
+    public string StoreId { get; set; } = string.Empty;
+    public string AgentName { get; set; } = string.Empty;
+    public DateTime ExpiresAt { get; set; }
 }

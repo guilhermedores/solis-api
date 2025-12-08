@@ -87,6 +87,42 @@ public class AuthService
     }
 
     /// <summary>
+    /// Gerar token JWT para agente com claims personalizadas (10 anos de validade)
+    /// Inclui agentName como claim adicional
+    /// </summary>
+    public string GenerateAgentTokenWithName(TokenPayload payload, string agentName)
+    {
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var key = Encoding.UTF8.GetBytes(_jwtSecret);
+
+        var claims = new List<Claim>
+        {
+            new("userId", payload.UserId.ToString()),
+            new("empresaId", payload.EmpresaId.ToString()),
+            new("storeId", payload.StoreId.ToString()),
+            new("tenantId", payload.TenantId.ToString()),
+            new("tenant", payload.Tenant),
+            new("role", payload.Role),
+            new("type", "agent"),
+            new("agentName", agentName)
+        };
+
+        var tokenDescriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(claims),
+            Expires = DateTime.UtcNow.AddDays(3650), // 10 anos
+            Issuer = _jwtIssuer,
+            Audience = _jwtAudience,
+            SigningCredentials = new SigningCredentials(
+                new SymmetricSecurityKey(key),
+                SecurityAlgorithms.HmacSha256Signature)
+        };
+
+        var token = tokenHandler.CreateToken(tokenDescriptor);
+        return tokenHandler.WriteToken(token);
+    }
+
+    /// <summary>
     /// Gerar token com tempo de expiração customizado
     /// </summary>
     private string GenerateTokenWithExpiry(TokenPayload payload, TimeSpan expiry)
@@ -319,4 +355,81 @@ public class AuthService
             UpdatedAt = user.Updated_At
         };
     }
+
+    /// <summary>
+    /// Buscar tenant por subdomain
+    /// </summary>
+    public async Task<TenantInfo?> GetTenantBySubdomainAsync(string subdomain)
+    {
+        var tenant = await _context.Tenants
+            .FirstOrDefaultAsync(t => t.Subdomain == subdomain && t.Active);
+
+        if (tenant == null)
+            return null;
+
+        return new TenantInfo
+        {
+            Id = tenant.Id,
+            Subdomain = tenant.Subdomain,
+            Name = tenant.TradeName ?? tenant.LegalName
+        };
+    }
+
+    /// <summary>
+    /// Verificar se uma empresa existe no tenant
+    /// </summary>
+    public async Task<bool> VerifyEmpresaExistsAsync(string tenantSubdomain, Guid empresaId)
+    {
+        try
+        {
+            using var connection = new NpgsqlConnection(GetConnectionString(tenantSubdomain));
+            await connection.OpenAsync();
+
+            var exists = await connection.QueryFirstOrDefaultAsync<bool>(@"
+                SELECT EXISTS(SELECT 1 FROM companies WHERE id = @EmpresaId AND active = true)
+            ", new { EmpresaId = empresaId });
+
+            return exists;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao verificar empresa {EmpresaId} no tenant {Tenant}", 
+                empresaId, tenantSubdomain);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Verificar se uma loja (store) existe no tenant
+    /// </summary>
+    public async Task<bool> VerifyStoreExistsAsync(string tenantSubdomain, Guid storeId)
+    {
+        try
+        {
+            using var connection = new NpgsqlConnection(GetConnectionString(tenantSubdomain));
+            await connection.OpenAsync();
+
+            var exists = await connection.QueryFirstOrDefaultAsync<bool>(@"
+                SELECT EXISTS(SELECT 1 FROM stores WHERE id = @StoreId AND active = true)
+            ", new { StoreId = storeId });
+
+            return exists;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao verificar loja {StoreId} no tenant {Tenant}", 
+                storeId, tenantSubdomain);
+            return false;
+        }
+    }
+}
+
+/// <summary>
+/// DTO para informações do tenant
+/// </summary>
+public class TenantInfo
+{
+    public Guid Id { get; set; }
+    public string Subdomain { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
 }
