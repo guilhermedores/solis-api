@@ -27,12 +27,19 @@ public class ReportService
             ?? throw new InvalidOperationException("Tenant subdomain not found in context");
     }
 
+    private static readonly System.Text.RegularExpressions.Regex SafeSubdomainRegex =
+        new(@"^[a-z0-9][a-z0-9_-]*$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
     private string GetConnectionString()
     {
         var baseConnectionString = _configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string not found");
-        
+
         var tenantSubdomain = GetTenantSubdomain();
+
+        if (!SafeSubdomainRegex.IsMatch(tenantSubdomain))
+            throw new ArgumentException($"Invalid tenant subdomain format: {tenantSubdomain}");
+
         var builder = new NpgsqlConnectionStringBuilder(baseConnectionString)
         {
             SearchPath = $"tenant_{tenantSubdomain},public"
@@ -171,10 +178,15 @@ public class ReportService
 
         var whereClause = whereConditions.Any() ? "WHERE " + string.Join(" AND ", whereConditions) : "";
 
-        // Build ORDER BY
-        var orderByClause = !string.IsNullOrEmpty(sortBy)
-            ? $"ORDER BY {sortBy} {sortDirection}"
-            : "";
+        // Build ORDER BY — sortBy validated against sortable report fields to prevent SQL injection
+        var orderByClause = "";
+        if (!string.IsNullOrEmpty(sortBy))
+        {
+            var safeSortDirection = sortDirection?.ToUpperInvariant() == "DESC" ? "DESC" : "ASC";
+            var sortField = report.Fields.FirstOrDefault(f => f.Name == sortBy && f.Sortable);
+            if (sortField != null)
+                orderByClause = $"ORDER BY {sortField.DataSource} {safeSortDirection}";
+        }
 
         // Count query
         var countSql = $"SELECT COUNT(*) {fromClause} {whereClause}";

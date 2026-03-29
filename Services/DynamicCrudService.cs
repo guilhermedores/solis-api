@@ -21,20 +21,26 @@ public class DynamicCrudService
         _cache = cache;
     }
 
+    private static readonly System.Text.RegularExpressions.Regex SafeSubdomainRegex =
+        new(@"^[a-z0-9][a-z0-9_-]*$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
     private string GetConnectionString(string? tenantSubdomain = null)
     {
         var baseConnectionString = _configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string not found");
-        
+
         if (!string.IsNullOrEmpty(tenantSubdomain))
         {
+            if (!SafeSubdomainRegex.IsMatch(tenantSubdomain))
+                throw new ArgumentException($"Invalid tenant subdomain format: {tenantSubdomain}");
+
             var builder = new NpgsqlConnectionStringBuilder(baseConnectionString)
             {
                 SearchPath = $"tenant_{tenantSubdomain},public"
             };
             return builder.ToString();
         }
-        
+
         return baseConnectionString;
     }
 
