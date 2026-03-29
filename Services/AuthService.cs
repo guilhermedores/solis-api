@@ -393,9 +393,9 @@ public class AuthService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro ao verificar empresa {EmpresaId} no tenant {Tenant}", 
+            _logger.LogError(ex, "Erro ao verificar empresa {EmpresaId} no tenant {Tenant}",
                 empresaId, tenantSubdomain);
-            return false;
+            throw;
         }
     }
 
@@ -417,9 +417,9 @@ public class AuthService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro ao verificar loja {StoreId} no tenant {Tenant}", 
+            _logger.LogError(ex, "Erro ao verificar loja {StoreId} no tenant {Tenant}",
                 storeId, tenantSubdomain);
-            return false;
+            throw;
         }
     }
 }

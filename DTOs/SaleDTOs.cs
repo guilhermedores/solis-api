@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace SolisApi.DTOs;
 
 // ==================== REQUEST DTOs ====================
@@ -5,25 +7,34 @@ namespace SolisApi.DTOs;
 public class CreateSaleRequest
 {
     public Guid? ClientSaleId { get; set; } // For offline sync and idempotency
+    [Required]
     public Guid StoreId { get; set; }
     public Guid? PosId { get; set; }
     public Guid? OperatorId { get; set; }
     public DateTime? SaleDateTime { get; set; }
+    [Required]
+    [MinLength(1, ErrorMessage = "A venda deve ter pelo menos 1 item")]
     public List<SaleItemRequest> Items { get; set; } = new();
     public List<SalePaymentRequest>? Payments { get; set; }
 }
 
 public class SaleItemRequest
 {
+    [Required]
     public Guid ProductId { get; set; }
+    [Range(0.0001, double.MaxValue, ErrorMessage = "Quantidade deve ser maior que zero")]
     public decimal Quantity { get; set; }
+    [Range(0, double.MaxValue, ErrorMessage = "Preço unitário não pode ser negativo")]
     public decimal UnitPrice { get; set; }
+    [Range(0, double.MaxValue, ErrorMessage = "Desconto não pode ser negativo")]
     public decimal DiscountAmount { get; set; } = 0;
 }
 
 public class SalePaymentRequest
 {
+    [Required]
     public Guid PaymentMethodId { get; set; }
+    [Range(0.01, double.MaxValue, ErrorMessage = "Valor do pagamento deve ser maior que zero")]
     public decimal Amount { get; set; }
     public string? AcquirerTxnId { get; set; }
     public string? AuthorizationCode { get; set; }

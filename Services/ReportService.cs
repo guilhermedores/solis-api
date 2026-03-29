@@ -79,21 +79,24 @@ public class ReportService
             new { ReportId = report.Id });
         
         report.Filters = filters.ToList();
-        
-        // Get filter options for each filter
-        foreach (var filter in report.Filters)
+
+        // Load all filter options in a single query (avoid N+1)
+        var filterIds = report.Filters.Select(f => f.Id).ToArray();
+        if (filterIds.Length > 0)
         {
-            var options = await connection.QueryAsync<ReportFilterOption>(@"
-                SELECT id as Id, filter_id as FilterId, value as Value, label as Label, 
+            var allOptions = (await connection.QueryAsync<ReportFilterOption>(@"
+                SELECT id as Id, filter_id as FilterId, value as Value, label as Label,
                        display_order as DisplayOrder
-                FROM report_filter_options 
-                WHERE filter_id = @FilterId 
+                FROM report_filter_options
+                WHERE filter_id = ANY(@FilterIds)
                 ORDER BY display_order",
-                new { FilterId = filter.Id });
-            
-            filter.Options = options.ToList();
+                new { FilterIds = filterIds }
+            )).GroupBy(o => o.FilterId).ToDictionary(g => g.Key, g => g.ToList());
+
+            foreach (var filter in report.Filters)
+                filter.Options = allOptions.TryGetValue(filter.Id, out var opts) ? opts : new List<ReportFilterOption>();
         }
-        
+
         return report;
     }
 
@@ -313,8 +316,8 @@ public class ReportService
 
         var whereClause = whereConditions.Any() ? "WHERE " + string.Join(" AND ", whereConditions) : "";
 
-        // Execute query without pagination
-        var dataSql = $"SELECT {selectFields} {fromClause} {whereClause}";
+        // Execute query — limited to 10.000 rows to prevent OutOfMemoryException
+        var dataSql = $"SELECT {selectFields} {fromClause} {whereClause} LIMIT 10000";
         var rows = await connection.QueryAsync(dataSql, parameters);
         var data = rows.Select(row => ((IDictionary<string, object>)row).ToDictionary(k => k.Key, v => v.Value)).ToList();
 

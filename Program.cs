@@ -87,6 +87,9 @@ builder.Services.AddCors(options =>
 // Adicionar controllers
 builder.Services.AddControllers();
 
+// Cache em memória para metadados de entidades (DynamicCrudService)
+builder.Services.AddMemoryCache();
+
 // Configurar DbContext para o schema public (tenants)
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 

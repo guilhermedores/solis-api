@@ -1,4 +1,5 @@
 using Dapper;
+using Microsoft.Extensions.Caching.Memory;
 using Npgsql;
 using SolisApi.Models.Metadata;
 using System.Text;
@@ -10,11 +11,14 @@ public class DynamicCrudService
 {
     private readonly IConfiguration _configuration;
     private readonly ILogger<DynamicCrudService> _logger;
+    private readonly IMemoryCache _cache;
+    private static readonly TimeSpan MetadataCacheTtl = TimeSpan.FromMinutes(5);
 
-    public DynamicCrudService(IConfiguration configuration, ILogger<DynamicCrudService> logger)
+    public DynamicCrudService(IConfiguration configuration, ILogger<DynamicCrudService> logger, IMemoryCache cache)
     {
         _configuration = configuration;
         _logger = logger;
+        _cache = cache;
     }
 
     private string GetConnectionString(string? tenantSubdomain = null)
@@ -85,21 +89,25 @@ public class DynamicCrudService
               ORDER BY category, display_name"
         )).ToList();
         
-        // Load permissions for each entity
-        foreach (var entity in entities)
+        // Load all permissions in a single query (avoid N+1)
+        var entityIds = entities.Select(e => e.Id).ToArray();
+        if (entityIds.Length > 0)
         {
-            entity.Permissions = (await connection.QueryAsync<EntityPermission>(
-                $@"SELECT id as Id, entity_id as EntityId, role as Role, 
-                         can_create as CanCreate, can_read as CanRead, 
-                         can_update as CanUpdate, can_delete as CanDelete, 
+            var allPermissions = (await connection.QueryAsync<EntityPermission>(
+                $@"SELECT id as Id, entity_id as EntityId, role as Role,
+                         can_create as CanCreate, can_read as CanRead,
+                         can_update as CanUpdate, can_delete as CanDelete,
                          can_read_own_only as CanReadOwnOnly, field_permissions as FieldPermissions,
                          created_at as CreatedAt, updated_at as UpdatedAt
-                  FROM {schema}.entity_permissions 
-                  WHERE entity_id = @EntityId",
-                new { EntityId = entity.Id }
-            )).ToList();
+                  FROM {schema}.entity_permissions
+                  WHERE entity_id = ANY(@EntityIds)",
+                new { EntityIds = entityIds }
+            )).GroupBy(p => p.EntityId).ToDictionary(g => g.Key, g => g.ToList());
+
+            foreach (var entity in entities)
+                entity.Permissions = allPermissions.TryGetValue(entity.Id, out var perms) ? perms : new List<EntityPermission>();
         }
-        
+
         return entities;
     }
 
@@ -108,8 +116,12 @@ public class DynamicCrudService
     /// </summary>
     public async Task<EntityMetadata?> GetEntityMetadataAsync(string tenantSubdomain, string entityName)
     {
+        var cacheKey = $"entity_meta_{tenantSubdomain}_{entityName}";
+        if (_cache.TryGetValue(cacheKey, out EntityMetadata? cached))
+            return cached;
+
         var connectionString = GetConnectionString(tenantSubdomain);
-        
+
         using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
         
@@ -148,18 +160,25 @@ public class DynamicCrudService
             new { EntityId = entity.Id }
         )).ToList();
         
-        // Get field options
-        foreach (var field in entity.Fields.Where(f => f.FieldType == "select" || f.FieldType == "multiselect"))
+        // Load all field options in a single query (avoid N+1)
+        var selectFieldIds = entity.Fields
+            .Where(f => f.FieldType == "select" || f.FieldType == "multiselect")
+            .Select(f => f.Id).ToArray();
+
+        if (selectFieldIds.Length > 0)
         {
-            field.Options = (await connection.QueryAsync<EntityFieldOption>(
-                $@"SELECT id as Id, field_id as FieldId, value as Value, label as Label, 
-                         display_order as DisplayOrder, is_active as IsActive, 
+            var allOptions = (await connection.QueryAsync<EntityFieldOption>(
+                $@"SELECT id as Id, field_id as FieldId, value as Value, label as Label,
+                         display_order as DisplayOrder, is_active as IsActive,
                          created_at as CreatedAt
-                  FROM {schema}.entity_field_options 
-                  WHERE field_id = @FieldId AND is_active = true 
+                  FROM {schema}.entity_field_options
+                  WHERE field_id = ANY(@FieldIds) AND is_active = true
                   ORDER BY display_order",
-                new { FieldId = field.Id }
-            )).ToList();
+                new { FieldIds = selectFieldIds }
+            )).GroupBy(o => o.FieldId).ToDictionary(g => g.Key, g => g.ToList());
+
+            foreach (var field in entity.Fields.Where(f => f.FieldType == "select" || f.FieldType == "multiselect"))
+                field.Options = allOptions.TryGetValue(field.Id, out var opts) ? opts : new List<EntityFieldOption>();
         }
         
         // Get relationships
@@ -183,19 +202,20 @@ public class DynamicCrudService
             if (field != null)
                 field.Relationship = rel;
         }
-        
+
         // Get permissions
         entity.Permissions = (await connection.QueryAsync<EntityPermission>(
-            $@"SELECT id as Id, entity_id as EntityId, role as Role, 
-                     can_create as CanCreate, can_read as CanRead, 
-                     can_update as CanUpdate, can_delete as CanDelete, 
+            $@"SELECT id as Id, entity_id as EntityId, role as Role,
+                     can_create as CanCreate, can_read as CanRead,
+                     can_update as CanUpdate, can_delete as CanDelete,
                      can_read_own_only as CanReadOwnOnly, field_permissions as FieldPermissions,
                      created_at as CreatedAt, updated_at as UpdatedAt
-              FROM {schema}.entity_permissions 
+              FROM {schema}.entity_permissions
               WHERE entity_id = @EntityId",
             new { EntityId = entity.Id }
         )).ToList();
-        
+
+        _cache.Set(cacheKey, entity, MetadataCacheTtl);
         return entity;
     }
 

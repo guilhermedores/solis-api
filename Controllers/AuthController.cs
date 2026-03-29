@@ -12,10 +12,12 @@ namespace SolisApi.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly AuthService _authService;
+    private readonly ILogger<AuthController> _logger;
 
-    public AuthController(AuthService authService)
+    public AuthController(AuthService authService, ILogger<AuthController> logger)
     {
         _authService = authService;
+        _logger = logger;
     }
 
     /// <summary>
@@ -188,10 +190,8 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new ErrorResponse
-            {
-                Error = $"Erro ao gerar token: {ex.Message}"
-            });
+            _logger.LogError(ex, "Erro ao gerar token de agente para store {StoreId}", request.StoreId);
+            return StatusCode(500, new ErrorResponse { Error = "Erro ao gerar token de agente" });
         }
     }
 }

@@ -35,7 +35,7 @@ public class Sale : Entity
     [Required]
     [MaxLength(50)]
     [Column("status")]
-    public string Status { get; private set; } = "pending"; // pending, completed, canceled, processing
+    public string Status { get; private set; } = SaleStatuses.Pending;
 
     [Required]
     [Column("subtotal", TypeName = "numeric(12,2)")]
@@ -56,7 +56,7 @@ public class Sale : Entity
     [Required]
     [MaxLength(50)]
     [Column("payment_status")]
-    public string PaymentStatus { get; private set; } = "unpaid"; // unpaid, partial, paid, refunded
+    public string PaymentStatus { get; private set; } = PaymentStatuses.Unpaid;
 
     // Navigation properties (protected set para controle do aggregate)
     private readonly List<SaleItem> _items = new();
@@ -83,8 +83,8 @@ public class Sale : Entity
             OperatorId = operatorId,
             ClientSaleId = clientSaleId,
             SaleDateTime = saleDateTime ?? DateTime.UtcNow,
-            Status = "pending",
-            PaymentStatus = "unpaid",
+            Status = SaleStatuses.Pending,
+            PaymentStatus = PaymentStatuses.Unpaid,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -95,10 +95,10 @@ public class Sale : Entity
     // Add item with taxes
     public void AddItem(SaleItem item)
     {
-        if (Status == "canceled")
+        if (Status == SaleStatuses.Canceled)
             throw new InvalidOperationException("Cannot add items to a canceled sale");
 
-        if (Status == "completed")
+        if (Status == SaleStatuses.Completed)
             throw new InvalidOperationException("Cannot add items to a completed sale");
 
         item.SaleId = Id;
@@ -109,7 +109,7 @@ public class Sale : Entity
     // Add payment
     public void AddPayment(SalePayment payment)
     {
-        if (Status == "canceled")
+        if (Status == SaleStatuses.Canceled)
             throw new InvalidOperationException("Cannot add payments to a canceled sale");
 
         payment.SaleId = Id;
@@ -120,10 +120,10 @@ public class Sale : Entity
     // Cancel sale
     public void Cancel(string reason, string source, string cancellationType, decimal? refundAmount = null)
     {
-        if (Status == "canceled")
+        if (Status == SaleStatuses.Canceled)
             throw new InvalidOperationException("Sale is already canceled");
 
-        Status = "canceled";
+        Status = SaleStatuses.Canceled;
         Cancellation = new SaleCancellation
         {
             Id = Guid.NewGuid(),
@@ -141,10 +141,10 @@ public class Sale : Entity
     // Update status
     public void UpdateStatus(string newStatus)
     {
-        if (Status == "canceled")
+        if (Status == SaleStatuses.Canceled)
             throw new InvalidOperationException("Cannot change status of a canceled sale");
 
-        var validStatuses = new[] { "pending", "completed", "canceled", "processing" };
+        var validStatuses = new[] { SaleStatuses.Pending, SaleStatuses.Completed, SaleStatuses.Canceled, SaleStatuses.Processing };
         if (!validStatuses.Contains(newStatus))
             throw new ArgumentException($"Invalid status: {newStatus}");
 
@@ -171,21 +171,21 @@ public class Sale : Entity
     // Update payment status based on payments
     private void UpdatePaymentStatus()
     {
-        var totalPaid = _payments.Where(p => p.Status == "processed").Sum(p => p.Amount);
-        
+        var totalPaid = _payments.Where(p => p.Status == PaymentProcessingStatuses.Processed).Sum(p => p.Amount);
+
         if (totalPaid >= Total)
         {
-            PaymentStatus = "paid";
-            if (Status == "pending")
-                Status = "completed";
+            PaymentStatus = PaymentStatuses.Paid;
+            if (Status == SaleStatuses.Pending)
+                Status = SaleStatuses.Completed;
         }
         else if (totalPaid > 0)
         {
-            PaymentStatus = "partial";
+            PaymentStatus = PaymentStatuses.Partial;
         }
         else
         {
-            PaymentStatus = "unpaid";
+            PaymentStatus = PaymentStatuses.Unpaid;
         }
 
         UpdatedAt = DateTime.UtcNow;

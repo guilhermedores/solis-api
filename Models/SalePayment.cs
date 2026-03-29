@@ -39,7 +39,7 @@ public class SalePayment
     [Required]
     [MaxLength(50)]
     [Column("status")]
-    public string Status { get; private set; } = "processed"; // pending, processed, failed, reversed
+    public string Status { get; private set; } = PaymentProcessingStatuses.Processed;
 
     [Column("processed_at")]
     public DateTime? ProcessedAt { get; private set; }
@@ -73,7 +73,7 @@ public class SalePayment
             AcquirerTxnId = acquirerTxnId,
             AuthorizationCode = authorizationCode,
             ChangeAmount = changeAmount,
-            Status = "processed",
+            Status = PaymentProcessingStatuses.Processed,
             ProcessedAt = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow
         };
