@@ -79,6 +79,6 @@ public class SalePayment
         };
     }
 
-    // For EF Core deserialization
-    private SalePayment() { }
+    // Required by EF Core — not for domain use
+    protected SalePayment() { }
 }

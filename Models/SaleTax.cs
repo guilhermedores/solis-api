@@ -74,6 +74,6 @@ public class SaleTax
         };
     }
 
-    // For EF Core deserialization
-    private SaleTax() { }
+    // Required by EF Core — not for domain use
+    protected SaleTax() { }
 }

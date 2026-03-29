@@ -115,6 +115,6 @@ public class SaleItem
         Total = (Quantity * UnitPrice) - DiscountAmount + TaxAmount;
     }
 
-    // For Dapper/EF Core deserialization
-    private SaleItem() { }
+    // Required by EF Core — not for domain use
+    protected SaleItem() { }
 }

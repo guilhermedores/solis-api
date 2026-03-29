@@ -253,7 +253,7 @@ public class DynamicCrudController : ControllerBase
     /// Get options for related entity (for select fields)
     /// </summary>
     [HttpGet("{id}/options/{fieldName}")]
-    public async Task<IActionResult> GetFieldOptions(string entityName, Guid id, string fieldName)
+    public async Task<IActionResult> GetFieldOptions(string entityName, Guid id, string fieldName, [FromQuery] string? search = null)
     {
         try
         {
@@ -279,8 +279,8 @@ public class DynamicCrudController : ControllerBase
                 var relatedMetadata = await _dynamicCrudService.GetEntityMetadataAsync(tenant, field.Relationship.RelatedEntityName!);
                 if (relatedMetadata != null)
                 {
-                    var (data, _) = await _dynamicCrudService.ListAsync(tenant, relatedMetadata, 1, 1000);
-                    
+                    var (data, _) = await _dynamicCrudService.ListAsync(tenant, relatedMetadata, 1, 200, search);
+
                     var options = data.Select(d => new
                     {
                         value = d.GetValue<Guid>("id").ToString(),

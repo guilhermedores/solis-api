@@ -191,6 +191,6 @@ public class Sale : Entity
         UpdatedAt = DateTime.UtcNow;
     }
 
-    // For EF Core deserialization
-    private Sale() { }
+    // Required by EF Core — not for domain use
+    protected Sale() { }
 }
