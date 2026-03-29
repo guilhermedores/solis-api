@@ -21,34 +21,35 @@ services:
     networks:
       - solis-network
 
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: solis-api
-    restart: unless-stopped
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ASPNETCORE_HTTP_PORTS=8080
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=solis_pdv;Username=solis_user;Password=solis2024;Include Error Detail=true
-      - CORS_ORIGINS=http://localhost:3000,http://localhost:5173
-      - JWT_SECRET=your-super-secret-key-change-this-in-production-min-32-chars
-      - Jwt__Issuer=SolisAPI
-      - Jwt__Audience=SolisClients
-      - Jwt__ExpirationHours=24
-    ports:
-      - "5287:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    networks:
-      - solis-network
+  # api: (rodando pelo VSCode — use F5 para debug)
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: solis-api
+  #   restart: unless-stopped
+  #   environment:
+  #     - ASPNETCORE_ENVIRONMENT=Production
+  #     - ASPNETCORE_HTTP_PORTS=8080
+  #     # As configs abaixo estão definidas no appsettings.json — descomente para sobrescrever em produção
+  #     # - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=solis_pdv;Username=solis_user;Password=solis2024;Include Error Detail=true
+  #     # - CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+  #     # - JWT_SECRET=your-super-secret-key-change-this-in-production-min-32-chars
+  #     # - Jwt__Issuer=SolisAPI
+  #     # - Jwt__Audience=SolisClients
+  #     # - Jwt__ExpirationHours=24
+  #   ports:
+  #     - "5287:8080"
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "curl -f http://localhost:8080/api/health || exit 1"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 40s
+  #   networks:
+  #     - solis-network
 
 volumes:
   postgres-data:
