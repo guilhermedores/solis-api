@@ -509,7 +509,60 @@ BEGIN
             EXECUTE FUNCTION update_updated_at_column()', p_schema_name, p_schema_name);
     
     EXECUTE format('COMMENT ON TABLE %I.unit_of_measures IS ''Unit of measures table for tenant %I''', p_schema_name, p_schema_name);
-    
+
+    -- =====================================================
+    -- NCM / CEST REFERENCE TABLES
+    -- =====================================================
+
+    -- Create ncm_codes table (Nomenclatura Comum do Mercosul)
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.ncm_codes (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            code VARCHAR(8) UNIQUE NOT NULL,
+            formatted_code VARCHAR(10) NOT NULL,
+            description TEXT NOT NULL,
+            active BOOLEAN NOT NULL DEFAULT true,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )', p_schema_name);
+
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_ncm_codes_code ON %I.ncm_codes(code)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_ncm_codes_active ON %I.ncm_codes(active)', p_schema_name);
+
+    EXECUTE format('
+        DROP TRIGGER IF EXISTS trg_ncm_codes_updated_at ON %I.ncm_codes;
+        CREATE TRIGGER trg_ncm_codes_updated_at
+            BEFORE UPDATE ON %I.ncm_codes
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column()', p_schema_name, p_schema_name);
+
+    -- Create cest_codes table (Código Especificador de Substituição Tributária)
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I.cest_codes (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            code VARCHAR(7) UNIQUE NOT NULL,
+            formatted_code VARCHAR(9) NOT NULL,
+            description TEXT NOT NULL,
+            segment VARCHAR(200),
+            ncm_codes TEXT,
+            active BOOLEAN NOT NULL DEFAULT true,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )', p_schema_name);
+
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_cest_codes_code ON %I.cest_codes(code)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_cest_codes_active ON %I.cest_codes(active)', p_schema_name);
+
+    EXECUTE format('
+        DROP TRIGGER IF EXISTS trg_cest_codes_updated_at ON %I.cest_codes;
+        CREATE TRIGGER trg_cest_codes_updated_at
+            BEFORE UPDATE ON %I.cest_codes
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column()', p_schema_name, p_schema_name);
+
+    EXECUTE format('COMMENT ON TABLE %I.ncm_codes IS ''NCM reference table for tenant %I''', p_schema_name, p_schema_name);
+    EXECUTE format('COMMENT ON TABLE %I.cest_codes IS ''CEST reference table for tenant %I''', p_schema_name, p_schema_name);
+
     -- Create products table
     -- Create sequence for internal_code
     EXECUTE format('CREATE SEQUENCE IF NOT EXISTS %I.products_internal_code_seq START 1', p_schema_name);
@@ -526,33 +579,36 @@ BEGIN
             brand_id UUID,
             unit_of_measure_id UUID,
             own_production BOOLEAN NOT NULL DEFAULT false,
-            ncm VARCHAR(8) NOT NULL,
-            cest VARCHAR(7),
+            ncm_id UUID NOT NULL,
+            cest_id UUID,
             product_origin INTEGER NOT NULL DEFAULT 0,
             item_type INTEGER NOT NULL DEFAULT 0,
             incide_pis_cofins BOOLEAN NOT NULL DEFAULT true,
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            
-            CONSTRAINT fk_products_group FOREIGN KEY (product_group_id) 
+
+            CONSTRAINT fk_products_group FOREIGN KEY (product_group_id)
                 REFERENCES %I.product_groups(id) ON DELETE RESTRICT,
-            CONSTRAINT fk_products_subgroup FOREIGN KEY (product_subgroup_id) 
+            CONSTRAINT fk_products_subgroup FOREIGN KEY (product_subgroup_id)
                 REFERENCES %I.product_subgroups(id) ON DELETE RESTRICT,
-            CONSTRAINT fk_products_brand FOREIGN KEY (brand_id) 
+            CONSTRAINT fk_products_brand FOREIGN KEY (brand_id)
                 REFERENCES %I.brands(id) ON DELETE RESTRICT,
-            CONSTRAINT fk_products_unit_of_measure FOREIGN KEY (unit_of_measure_id) 
+            CONSTRAINT fk_products_unit_of_measure FOREIGN KEY (unit_of_measure_id)
                 REFERENCES %I.unit_of_measures(id) ON DELETE RESTRICT,
-            CONSTRAINT chk_products_ncm_length CHECK (LENGTH(ncm) = 8),
-            CONSTRAINT chk_products_cest_length CHECK (cest IS NULL OR LENGTH(cest) = 7),
+            CONSTRAINT fk_products_ncm FOREIGN KEY (ncm_id)
+                REFERENCES %I.ncm_codes(id) ON DELETE RESTRICT,
+            CONSTRAINT fk_products_cest FOREIGN KEY (cest_id)
+                REFERENCES %I.cest_codes(id) ON DELETE RESTRICT,
             CONSTRAINT chk_products_product_origin CHECK (product_origin BETWEEN 0 AND 8),
             CONSTRAINT chk_products_item_type CHECK (item_type BETWEEN 0 AND 99)
-        )', p_schema_name, p_schema_name, p_schema_name, p_schema_name, p_schema_name, p_schema_name, p_schema_name);
+        )', p_schema_name, p_schema_name, p_schema_name, p_schema_name, p_schema_name, p_schema_name, p_schema_name, p_schema_name, p_schema_name);
     
     EXECUTE format('CREATE INDEX IF NOT EXISTS idx_products_internal_code ON %I.products(internal_code)', p_schema_name);
     EXECUTE format('CREATE INDEX IF NOT EXISTS idx_products_barcode ON %I.products(barcode)', p_schema_name);
     EXECUTE format('CREATE INDEX IF NOT EXISTS idx_products_active ON %I.products(active)', p_schema_name);
     EXECUTE format('CREATE INDEX IF NOT EXISTS idx_products_product_group ON %I.products(product_group_id)', p_schema_name);
-    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_products_ncm ON %I.products(ncm)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_products_ncm_id ON %I.products(ncm_id)', p_schema_name);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS idx_products_cest_id ON %I.products(cest_id)', p_schema_name);
     
     EXECUTE format('
         DROP TRIGGER IF EXISTS trg_products_updated_at ON %I.products;

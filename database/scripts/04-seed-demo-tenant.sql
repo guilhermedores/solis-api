@@ -382,58 +382,35 @@ INSERT INTO tenant_demo.unit_of_measures (id, code, name) VALUES
 ('35000000-0000-0000-0000-000000000010', 'DZ', 'Dúzia')
 ON CONFLICT (id) DO NOTHING;
 
--- Seed example products
+-- Seed example products (ncm_id via subselect — requires 05-seed-ncm-cest.sql to run first)
 INSERT INTO tenant_demo.products (
-    id, 
-    internal_code, 
-    barcode, 
-    description, 
-    active, 
-    product_group_id, 
-    product_subgroup_id, 
-    brand_id, 
-    unit_of_measure_id, 
-    own_production, 
-    ncm, 
-    cest, 
-    product_origin, 
-    item_type, 
-    incide_pis_cofins
-) VALUES
-(
-    '40000000-0000-0000-0000-000000000001',
-    '000001',
-    '7891234567890',
-    'Produto A',
-    true,
-    '10000000-0000-0000-0000-000000000001', -- GERAL group
-    '20000000-0000-0000-0000-000000000001', -- GERAL subgroup
-    '30000000-0000-0000-0000-000000000001', -- SEM MARCA
-    '35000000-0000-0000-0000-000000000001', -- UN
-    false,
-    '12345678',
-    NULL,
-    0, -- Nacional
-    0, -- Mercadoria para Revenda
-    true
-),
-(
-    '40000000-0000-0000-0000-000000000002',
-    '000002',
-    '7891234567891',
-    'Produto B',
-    true,
-    '10000000-0000-0000-0000-000000000001', -- GERAL group
-    '20000000-0000-0000-0000-000000000001', -- GERAL subgroup
-    '30000000-0000-0000-0000-000000000001', -- SEM MARCA
-    '35000000-0000-0000-0000-000000000001', -- UN
-    false,
-    '87654321',
-    NULL,
-    0, -- Nacional
-    0, -- Mercadoria para Revenda
-    true
+    id, internal_code, barcode, description, active,
+    product_group_id, product_subgroup_id, brand_id, unit_of_measure_id,
+    own_production, ncm_id, cest_id, product_origin, item_type, incide_pis_cofins
 )
+SELECT
+    '40000000-0000-0000-0000-000000000001', '000001', '7891234567890', 'Produto A', true,
+    '10000000-0000-0000-0000-000000000001', -- GERAL group
+    '20000000-0000-0000-0000-000000000001', -- GERAL subgroup
+    '30000000-0000-0000-0000-000000000001', -- SEM MARCA
+    '35000000-0000-0000-0000-000000000001', -- UN
+    false, n.id, NULL, 0, 0, true
+FROM tenant_demo.ncm_codes n WHERE n.code = '22021000' -- 2202.10.00 Águas adicionadas de açúcar
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO tenant_demo.products (
+    id, internal_code, barcode, description, active,
+    product_group_id, product_subgroup_id, brand_id, unit_of_measure_id,
+    own_production, ncm_id, cest_id, product_origin, item_type, incide_pis_cofins
+)
+SELECT
+    '40000000-0000-0000-0000-000000000002', '000002', '7891234567891', 'Produto B', true,
+    '10000000-0000-0000-0000-000000000001', -- GERAL group
+    '20000000-0000-0000-0000-000000000001', -- GERAL subgroup
+    '30000000-0000-0000-0000-000000000001', -- SEM MARCA
+    '35000000-0000-0000-0000-000000000001', -- UN
+    false, n.id, NULL, 0, 0, true
+FROM tenant_demo.ncm_codes n WHERE n.code = '39269090' -- 3926.90.90 Outras obras de plástico
 ON CONFLICT (id) DO NOTHING;
 
 -- Seed product prices for example products
@@ -506,8 +483,8 @@ INSERT INTO tenant_demo.entity_fields (id, entity_id, name, display_name, column
 ('f0500000-0000-0000-0000-000000000008', 'e0000000-0000-0000-0000-000000000005', 'brand_id', 'Fabricante / Marca', 'brand_id', 'uuid', false, false, false, false, true, true, true, 0, 7, 'select', NULL, 'Informação relevante para compras e relatórios de marca', NULL, NULL),
 ('f0500000-0000-0000-0000-000000000009', 'e0000000-0000-0000-0000-000000000005', 'own_production', 'Produção Própria?', 'own_production', 'boolean', true, false, false, false, true, true, true, 0, 8, 'checkbox', NULL, 'Define se é revenda ou fabricação', NULL, 'false'),
 ('f0500000-0000-0000-0000-000000000010', 'e0000000-0000-0000-0000-000000000005', 'unit_of_measure_id', 'Unidade de Medida', 'unit_of_measure_id', 'uuid', false, false, false, false, true, true, true, 0, 9, 'select', NULL, 'Selecione a unidade de medida', NULL, NULL),
-('f0500000-0000-0000-0000-000000000011', 'e0000000-0000-0000-0000-000000000005', 'ncm', 'NCM', 'ncm', 'string', true, false, false, false, true, true, true, 0, 10, 'text', '22021000', 'Código de 8 dígitos', '^[0-9]{8}$', NULL),
-('f0500000-0000-0000-0000-000000000012', 'e0000000-0000-0000-0000-000000000005', 'cest', 'CEST', 'cest', 'string', false, false, false, false, true, true, true, 0, 11, 'text', '3007000', 'Código de 7 dígitos', '^[0-9]{7}$', NULL),
+('f0500000-0000-0000-0000-000000000011', 'e0000000-0000-0000-0000-000000000005', 'ncm_id', 'NCM', 'ncm_id', 'uuid', true, false, false, false, true, true, true, 0, 10, 'select', NULL, 'Nomenclatura Comum do Mercosul (obrigatório)', NULL, NULL),
+('f0500000-0000-0000-0000-000000000012', 'e0000000-0000-0000-0000-000000000005', 'cest_id', 'CEST', 'cest_id', 'uuid', false, false, false, false, true, true, true, 0, 11, 'select', NULL, 'Código Especificador da ST (apenas para produtos com substituição tributária)', NULL, NULL),
 ('f0500000-0000-0000-0000-000000000013', 'e0000000-0000-0000-0000-000000000005', 'product_origin', 'Código Origem do Produto', 'product_origin', 'number', true, false, false, false, true, true, true, 0, 12, 'select', NULL, 'Define a origem da mercadoria', NULL, '0'),
 ('f0500000-0000-0000-0000-000000000014', 'e0000000-0000-0000-0000-000000000005', 'item_type', 'Tipo de Item', 'item_type', 'number', true, false, false, false, true, true, true, 0, 13, 'select', NULL, 'Mercadoria para Revenda, etc.', NULL, '0'),
 ('f0500000-0000-0000-0000-000000000015', 'e0000000-0000-0000-0000-000000000005', 'incide_pis_cofins', 'Incide PIS/COFINS?', 'incide_pis_cofins', 'boolean', true, false, false, false, true, true, true, 0, 14, 'checkbox', NULL, 'Flag para regra tributária', NULL, 'true'),
@@ -1045,6 +1022,70 @@ DO $$
 BEGIN
     RAISE NOTICE '📊 Reports module seeded successfully';
     RAISE NOTICE 'Example Report: Products List with filters and export capabilities';
+END $$;
+
+-- =============================================
+-- NCM / CEST ENTITIES
+-- =============================================
+
+-- Register ncm_code entity (e17)
+INSERT INTO tenant_demo.entities (id, name, display_name, table_name, category, icon, description, allow_create, allow_read, allow_update, allow_delete)
+VALUES ('e0000000-0000-0000-0000-000000000017', 'ncm_code', 'Códigos NCM', 'ncm_codes', 'Fiscal', 'tag', 'Nomenclatura Comum do Mercosul — tabela de referência fiscal', true, true, true, false)
+ON CONFLICT (id) DO NOTHING;
+
+-- Register cest_code entity (e18)
+INSERT INTO tenant_demo.entities (id, name, display_name, table_name, category, icon, description, allow_create, allow_read, allow_update, allow_delete)
+VALUES ('e0000000-0000-0000-0000-000000000018', 'cest_code', 'Códigos CEST', 'cest_codes', 'Fiscal', 'receipt-tax', 'Código Especificador de Substituição Tributária — obrigatório apenas para produtos com ST', true, true, true, false)
+ON CONFLICT (id) DO NOTHING;
+
+-- Register ncm_code entity fields (f1400000)
+INSERT INTO tenant_demo.entity_fields (id, entity_id, name, display_name, column_name, data_type, is_required, is_readonly, is_system_field, show_in_list, show_in_detail, show_in_create, show_in_update, list_order, form_order, field_type, placeholder, help_text, validation_regex, default_value) VALUES
+('f1400000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000017', 'id', 'ID', 'id', 'uuid', true, true, true, false, true, false, false, 0, 0, 'text', NULL, NULL, NULL, NULL),
+('f1400000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000017', 'code', 'Código', 'code', 'string', true, false, false, true, true, true, true, 1, 1, 'text', '22021000', 'Código de 8 dígitos sem pontos', '^[0-9]{8}$', NULL),
+('f1400000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000017', 'formatted_code', 'Código Formatado', 'formatted_code', 'string', true, false, false, true, true, true, true, 2, 2, 'text', '2202.10.00', 'Código com pontos (ex: 2202.10.00)', NULL, NULL),
+('f1400000-0000-0000-0000-000000000004', 'e0000000-0000-0000-0000-000000000017', 'description', 'Descrição', 'description', 'string', true, false, false, true, true, true, true, 3, 3, 'text', NULL, NULL, NULL, NULL),
+('f1400000-0000-0000-0000-000000000005', 'e0000000-0000-0000-0000-000000000017', 'active', 'Ativo', 'active', 'boolean', true, false, false, true, true, true, true, 4, 4, 'checkbox', NULL, NULL, NULL, 'true')
+ON CONFLICT (id) DO NOTHING;
+
+-- Register cest_code entity fields (f1500000)
+INSERT INTO tenant_demo.entity_fields (id, entity_id, name, display_name, column_name, data_type, is_required, is_readonly, is_system_field, show_in_list, show_in_detail, show_in_create, show_in_update, list_order, form_order, field_type, placeholder, help_text, validation_regex, default_value) VALUES
+('f1500000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000018', 'id', 'ID', 'id', 'uuid', true, true, true, false, true, false, false, 0, 0, 'text', NULL, NULL, NULL, NULL),
+('f1500000-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000018', 'code', 'Código', 'code', 'string', true, false, false, true, true, true, true, 1, 1, 'text', '0100100', 'Código de 7 dígitos sem pontos', '^[0-9]{7}$', NULL),
+('f1500000-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000018', 'formatted_code', 'Código Formatado', 'formatted_code', 'string', true, false, false, true, true, true, true, 2, 2, 'text', '01.001.00', 'Código com pontos (ex: 01.001.00)', NULL, NULL),
+('f1500000-0000-0000-0000-000000000004', 'e0000000-0000-0000-0000-000000000018', 'description', 'Descrição', 'description', 'string', true, false, false, true, true, true, true, 3, 3, 'text', NULL, NULL, NULL, NULL),
+('f1500000-0000-0000-0000-000000000005', 'e0000000-0000-0000-0000-000000000018', 'segment', 'Segmento', 'segment', 'string', false, false, false, false, true, true, true, 0, 4, 'text', NULL, NULL, NULL, NULL),
+('f1500000-0000-0000-0000-000000000006', 'e0000000-0000-0000-0000-000000000018', 'ncm_codes', 'NCMs Relacionados', 'ncm_codes', 'string', false, false, false, false, true, true, true, 0, 5, 'text', NULL, 'NCMs cobertos por este CEST (referência)', NULL, NULL),
+('f1500000-0000-0000-0000-000000000007', 'e0000000-0000-0000-0000-000000000018', 'active', 'Ativo', 'active', 'boolean', true, false, false, true, true, true, true, 4, 6, 'checkbox', NULL, NULL, NULL, 'true')
+ON CONFLICT (id) DO NOTHING;
+
+-- Permissions: admin full CRUD, manager/operator read only
+INSERT INTO tenant_demo.entity_permissions (entity_id, role, can_create, can_read, can_update, can_delete) VALUES
+('e0000000-0000-0000-0000-000000000017', 'admin', true, true, true, false),
+('e0000000-0000-0000-0000-000000000017', 'manager', false, true, false, false),
+('e0000000-0000-0000-0000-000000000017', 'operator', false, true, false, false),
+('e0000000-0000-0000-0000-000000000018', 'admin', true, true, true, false),
+('e0000000-0000-0000-0000-000000000018', 'manager', false, true, false, false),
+('e0000000-0000-0000-0000-000000000018', 'operator', false, true, false, false)
+ON CONFLICT (entity_id, role) DO NOTHING;
+
+-- Relationships: product.ncm_id → ncm_codes, product.cest_id → cest_codes
+INSERT INTO tenant_demo.entity_relationships (id, entity_id, field_id, related_entity_id, relationship_type, foreign_key_column, display_field, cascade_delete) VALUES
+('50000000-0000-0000-0000-000000000013',
+ 'e0000000-0000-0000-0000-000000000005',
+ 'f0500000-0000-0000-0000-000000000011',
+ 'e0000000-0000-0000-0000-000000000017',
+ 'many-to-one', 'ncm_id', 'description', false),
+('50000000-0000-0000-0000-000000000014',
+ 'e0000000-0000-0000-0000-000000000005',
+ 'f0500000-0000-0000-0000-000000000012',
+ 'e0000000-0000-0000-0000-000000000018',
+ 'many-to-one', 'cest_id', 'description', false)
+ON CONFLICT (id) DO NOTHING;
+
+DO $$
+BEGIN
+    RAISE NOTICE '🏷️  NCM/CEST entities registered (ncm_code e17, cest_code e18)';
+    RAISE NOTICE 'Run 05-seed-ncm-cest.sql to populate reference data (10.515 NCMs, 1.383 CESTs)';
 END $$;
 
 

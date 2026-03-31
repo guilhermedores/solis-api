@@ -1,7 +1,22 @@
 {
   "permissions": {
     "allow": [
-      "Bash(xargs cat:*)"
+      "Bash(xargs cat:*)",
+      "Bash(python3 -c \"import json; data=json.load\\(open\\(''c:/Projetos/Solis/solis-api/database/json/ncm_cest.json''\\)\\); print\\(f''Total records: {len\\(data\\)}''\\); print\\(''Sample keys:'', list\\(data[0].keys\\(\\)\\) if data else ''empty''\\)\")",
+      "Bash(node -e \"const d=require\\(''./c:/Projetos/Solis/solis-api/database/json/ncm_cest.json''\\); console.log\\(''Total:'', d.length, ''Keys:'', Object.keys\\(d[0]\\)\\)\")",
+      "Bash(find /c/Projetos/Solis/solis-api -type f -name *.ts -o -name *.js)",
+      "Bash(find /c/Projetos/Solis/solis-api -type f \\\\\\(-name *.cs -o -name *.json \\\\\\))",
+      "Bash(xargs grep:*)",
+      "Bash(node -e \"require\\(''xlsx''\\); console.log\\(''ok''\\)\")",
+      "Bash(python3 generate-ncm-seed.py tenant_demo)",
+      "Bash(python3 generate-cest-seed.py tenant_demo)",
+      "Bash(PGPASSWORD=solis2024 psql -h localhost -p 5432 -U solis_user -d solis_pdv -c \"SELECT schema_name FROM public.tenants;\")",
+      "mcp__postgres__list_schemas",
+      "mcp__postgres__execute_sql",
+      "Bash(python3 -c \":*)",
+      "Bash(python3 -c \"import psycopg2; print\\(''ok''\\)\")",
+      "Bash(pip install:*)",
+      "Bash(python3:*)"
     ]
   }
 }

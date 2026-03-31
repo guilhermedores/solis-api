@@ -286,7 +286,29 @@ public class DynamicCrudController : ControllerBase
                         value = d.GetValue<Guid>("id").ToString(),
                         label = d.GetValue<string>(field.Relationship.DisplayField ?? "name")
                     }).ToList();
-                    
+
+                    // When editing (real record ID), ensure the currently selected value is included
+                    // even if it falls outside the first 200 results (e.g. NCM with 10k+ records)
+                    if (id != Guid.Empty && string.IsNullOrEmpty(search))
+                    {
+                        var record = await _dynamicCrudService.GetByIdAsync(tenant, metadata, id);
+                        if (record != null)
+                        {
+                            var currentId = record.GetValue<Guid>(field.Name);
+                            var currentIdStr = currentId.ToString();
+                            if (currentId != Guid.Empty && !options.Any(o => o.value == currentIdStr))
+                            {
+                                var currentRecord = await _dynamicCrudService.GetByIdAsync(
+                                    tenant, relatedMetadata, currentId);
+                                if (currentRecord != null)
+                                {
+                                    var currentLabel = currentRecord.GetValue<string>(field.Relationship.DisplayField ?? "name");
+                                    options.Insert(0, new { value = currentIdStr, label = currentLabel ?? currentIdStr });
+                                }
+                            }
+                        }
+                    }
+
                     return Ok(options);
                 }
             }
