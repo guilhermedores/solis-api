@@ -16,7 +16,11 @@
       "Bash(python3 -c \":*)",
       "Bash(python3 -c \"import psycopg2; print\\(''ok''\\)\")",
       "Bash(pip install:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(dotnet new:*)",
+      "Bash(mv SolisManagementApi/* .)",
+      "Bash(mv SolisManagementApi/.* .)",
+      "Bash(dotnet add:*)"
     ]
   }
 }
