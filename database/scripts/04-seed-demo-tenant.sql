@@ -988,7 +988,7 @@ VALUES (
     'SELECT p.id, p.internal_code as code, p.barcode, p.description, p.active, u.code as unit_code, b.name as brand_name, pg.name as group_name, COALESCE(latest_price.price, 0) as sale_price, COALESCE(latest_cost.cost_price, 0) as cost_price, CASE WHEN COALESCE(latest_price.price, 0) > 0 THEN ROUND(((latest_price.price - COALESCE(latest_cost.cost_price, 0)) / latest_price.price * 100)::numeric, 2) ELSE 0 END as margin_percent FROM products p LEFT JOIN unit_of_measures u ON p.unit_of_measure_id = u.id LEFT JOIN brands b ON p.brand_id = b.id LEFT JOIN product_groups pg ON p.product_group_id = pg.id LEFT JOIN LATERAL (SELECT price FROM product_prices WHERE product_id = p.id AND active = true ORDER BY effective_date DESC, created_at DESC LIMIT 1) latest_price ON true LEFT JOIN LATERAL (SELECT cost_price FROM product_costs WHERE product_id = p.id AND active = true ORDER BY effective_date DESC, created_at DESC LIMIT 1) latest_cost ON true',
     true
 )
-ON CONFLICT (name) DO NOTHING;
+ON CONFLICT (name) DO UPDATE SET active = EXCLUDED.active;
 
 -- Register fields for products report
 INSERT INTO tenant_demo.report_fields (id, report_id, name, display_name, field_type, data_source, format_mask, display_order, visible, sortable, filterable) VALUES
