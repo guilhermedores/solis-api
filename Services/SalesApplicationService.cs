@@ -55,7 +55,8 @@ public class SalesApplicationService : ISalesService
             request.PosId,
             request.OperatorId,
             request.ClientSaleId,
-            request.SaleDateTime);
+            request.SaleDateTime,
+            request.CashRegisterId);
 
         // Add items with taxes
         foreach (var itemRequest in request.Items)
@@ -141,6 +142,7 @@ public class SalesApplicationService : ISalesService
             query.DateTo,
             query.Status,
             query.ClientSaleId,
+            query.CashRegisterId,
             query.Page,
             query.PageSize,
             cancellationToken);
@@ -306,6 +308,7 @@ public class SalesApplicationService : ISalesService
             StoreId = sale.StoreId,
             PosId = sale.PosId,
             OperatorId = sale.OperatorId,
+            CashRegisterId = sale.CashRegisterId,
             SaleDateTime = sale.SaleDateTime,
             Status = sale.Status,
             PaymentStatus = sale.PaymentStatus,

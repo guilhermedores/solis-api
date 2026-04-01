@@ -126,6 +126,7 @@ public class SalesController : ControllerBase
         [FromQuery] DateTime? dateTo,
         [FromQuery] string? status,
         [FromQuery] Guid? clientSaleId,
+        [FromQuery] Guid? cashRegisterId,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
@@ -144,6 +145,7 @@ public class SalesController : ControllerBase
                 DateTo = dateTo,
                 Status = status,
                 ClientSaleId = clientSaleId,
+                CashRegisterId = cashRegisterId,
                 Page = page,
                 PageSize = pageSize
             };

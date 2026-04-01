@@ -125,6 +125,10 @@ builder.Services.AddScoped<ITaxDomainService, TaxDomainService>();
 builder.Services.AddScoped<ISaleRepository, SaleRepository>();
 builder.Services.AddScoped<ISalesService, SalesApplicationService>();
 
+// Cash Register Module
+builder.Services.AddScoped<ICashRegisterRepository, CashRegisterRepository>();
+builder.Services.AddScoped<ICashRegisterService, CashRegisterService>();
+
 // Health Checks - sem DbContext check para evitar problemas de scoping
 builder.Services.AddHealthChecks();
 

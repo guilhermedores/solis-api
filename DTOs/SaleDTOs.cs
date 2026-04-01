@@ -11,6 +11,7 @@ public class CreateSaleRequest
     public Guid StoreId { get; set; }
     public Guid? PosId { get; set; }
     public Guid? OperatorId { get; set; }
+    public Guid? CashRegisterId { get; set; }
     public DateTime? SaleDateTime { get; set; }
     [Required]
     [MinLength(1, ErrorMessage = "A venda deve ter pelo menos 1 item")]
@@ -70,6 +71,7 @@ public class SaleResponse
     public Guid StoreId { get; set; }
     public Guid? PosId { get; set; }
     public Guid? OperatorId { get; set; }
+    public Guid? CashRegisterId { get; set; }
     public DateTime SaleDateTime { get; set; }
     public string Status { get; set; } = string.Empty;
     public decimal Subtotal { get; set; }

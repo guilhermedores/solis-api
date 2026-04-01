@@ -18,6 +18,7 @@ public interface ISaleRepository
         DateTime? dateTo = null,
         string? status = null,
         Guid? clientSaleId = null,
+        Guid? cashRegisterId = null,
         int page = 1,
         int pageSize = 20,
         CancellationToken cancellationToken = default);

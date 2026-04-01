@@ -26,12 +26,13 @@ public class SaleRepository : ISaleRepository
         await EnsureOpenAsync(connection, cancellationToken);
 
         var sql = $@"
-            SELECT 
+            SELECT
                 id AS Id,
                 client_sale_id AS ClientSaleId,
                 store_id AS StoreId,
                 pos_id AS PosId,
                 operator_id AS OperatorId,
+                cash_register_id AS CashRegisterId,
                 sale_datetime AS SaleDateTime,
                 status AS Status,
                 subtotal AS Subtotal,
@@ -77,6 +78,7 @@ public class SaleRepository : ISaleRepository
         DateTime? dateTo = null,
         string? status = null,
         Guid? clientSaleId = null,
+        Guid? cashRegisterId = null,
         int page = 1,
         int pageSize = 20,
         CancellationToken cancellationToken = default)
@@ -122,6 +124,11 @@ public class SaleRepository : ISaleRepository
             conditions.Add("client_sale_id = @ClientSaleId");
             parameters.Add("ClientSaleId", clientSaleId.Value);
         }
+        if (cashRegisterId.HasValue)
+        {
+            conditions.Add("cash_register_id = @CashRegisterId");
+            parameters.Add("CashRegisterId", cashRegisterId.Value);
+        }
 
         var whereClause = conditions.Any() ? "WHERE " + string.Join(" AND ", conditions) : "";
 
@@ -135,13 +142,14 @@ public class SaleRepository : ISaleRepository
         parameters.Add("Offset", offset);
 
         var dataSql = $@"
-            SELECT 
+            SELECT
                 id AS Id,
-                order_number AS OrderNumber,                
+                order_number AS OrderNumber,
                 client_sale_id AS ClientSaleId,
                 store_id AS StoreId,
                 pos_id AS PosId,
                 operator_id AS OperatorId,
+                cash_register_id AS CashRegisterId,
                 sale_datetime AS SaleDateTime,
                 status AS Status,
                 subtotal AS Subtotal,
@@ -151,9 +159,9 @@ public class SaleRepository : ISaleRepository
                 payment_status AS PaymentStatus,
                 created_at AS CreatedAt,
                 updated_at AS UpdatedAt
-            FROM {tenantSchema}.sales 
+            FROM {tenantSchema}.sales
             {whereClause}
-            ORDER BY sale_datetime DESC 
+            ORDER BY sale_datetime DESC
             LIMIT @Limit OFFSET @Offset";
 
         var sales = (await connection.QueryAsync<Sale>(dataSql, parameters)).ToList();
@@ -178,10 +186,10 @@ public class SaleRepository : ISaleRepository
             transaction = (connection as System.Data.Common.DbConnection)!.BeginTransaction();
             // Save sale
             var saleSql = $@"
-                INSERT INTO {tenantSchema}.sales 
-                (id, client_sale_id, store_id, pos_id, operator_id, sale_datetime, status, 
+                INSERT INTO {tenantSchema}.sales
+                (id, client_sale_id, store_id, pos_id, operator_id, cash_register_id, sale_datetime, status,
                  subtotal, discount_total, tax_total, total, payment_status, created_at, updated_at)
-                VALUES (@Id, @ClientSaleId, @StoreId, @PosId, @OperatorId, @SaleDateTime, @Status, 
+                VALUES (@Id, @ClientSaleId, @StoreId, @PosId, @OperatorId, @CashRegisterId, @SaleDateTime, @Status,
                         @Subtotal, @DiscountTotal, @TaxTotal, @Total, @PaymentStatus, @CreatedAt, @UpdatedAt)";
 
             await connection.ExecuteAsync(saleSql, new
@@ -191,6 +199,7 @@ public class SaleRepository : ISaleRepository
                 sale.StoreId,
                 sale.PosId,
                 sale.OperatorId,
+                sale.CashRegisterId,
                 sale.SaleDateTime,
                 sale.Status,
                 sale.Subtotal,

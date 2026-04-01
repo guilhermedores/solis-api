@@ -34,26 +34,11 @@ print_info "  Solis API - Database Setup Script"
 print_info "=========================================="
 echo ""
 
-# Get script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Single init script at root database/
+INIT_SQL="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../database" && pwd)/init.sql"
 
-# Get SQL files (exclude 99-rollback)
-SQL_FILES=()
-for file in "$SCRIPT_DIR"/*.sql; do
-    filename=$(basename "$file")
-    if [[ ! $filename == 99-* ]]; then
-        if [[ $SKIP_SEED == "true" && $filename == 04-seed-* ]]; then
-            continue
-        fi
-        SQL_FILES+=("$file")
-    fi
-done
-
-# Sort files
-IFS=$'\n' SQL_FILES=($(sort <<<"${SQL_FILES[*]}"))
-unset IFS
-
-TOTAL_FILES=${#SQL_FILES[@]}
+SQL_FILES=("$INIT_SQL")
+TOTAL_FILES=1
 
 if [[ $SKIP_SEED == "true" ]]; then
     print_warning "Skipping seed scripts (04-*)"

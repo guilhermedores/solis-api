@@ -28,6 +28,9 @@ public class Sale : Entity
     [Column("operator_id")]
     public Guid? OperatorId { get; set; }
 
+    [Column("cash_register_id")]
+    public Guid? CashRegisterId { get; set; }
+
     [Required]
     [Column("sale_datetime")]
     public DateTime SaleDateTime { get; set; } = DateTime.UtcNow;
@@ -73,7 +76,8 @@ public class Sale : Entity
         Guid? posId,
         Guid? operatorId,
         Guid? clientSaleId = null,
-        DateTime? saleDateTime = null)
+        DateTime? saleDateTime = null,
+        Guid? cashRegisterId = null)
     {
         var sale = new Sale
         {
@@ -83,6 +87,7 @@ public class Sale : Entity
             OperatorId = operatorId,
             ClientSaleId = clientSaleId,
             SaleDateTime = saleDateTime ?? DateTime.UtcNow,
+            CashRegisterId = cashRegisterId,
             Status = SaleStatuses.Pending,
             PaymentStatus = PaymentStatuses.Unpaid,
             CreatedAt = DateTime.UtcNow,

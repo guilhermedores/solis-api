@@ -28,20 +28,13 @@ Write-Info "  Solis API - Database Setup Script"
 Write-Info "=========================================="
 Write-Info ""
 
-# Get script directory
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+# Single init script at root database/
+$InitSql = Join-Path (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))) "database\init.sql"
 
 # Get SQL files (exclude 99-rollback)
-$SqlFiles = Get-ChildItem "$ScriptDir\*.sql" | 
-    Where-Object { $_.Name -notlike "99-*" } | 
-    Sort-Object Name
+$SqlFiles = @(Get-Item $InitSql)
 
-if ($SkipSeed) {
-    $SqlFiles = $SqlFiles | Where-Object { $_.Name -notlike "04-seed-*" }
-    Write-Warning "Skipping seed scripts (04-*)"
-}
-
-Write-Info "Found $($SqlFiles.Count) SQL scripts to execute"
+Write-Info "Found $($SqlFiles.Count) SQL script to execute"
 Write-Info ""
 
 # Execute each script
