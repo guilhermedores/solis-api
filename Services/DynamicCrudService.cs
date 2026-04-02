@@ -451,21 +451,33 @@ public class DynamicCrudService
         {
             if (values.ContainsKey(field.Name))
             {
+                var rawValue = ConvertJsonElement(values[field.Name]);
+
+                // Hash password/pin fields with BCrypt before storing
+                if (field.FieldType is "password" or "pin")
+                {
+                    var plain = rawValue?.ToString();
+                    if (string.IsNullOrEmpty(plain))
+                        continue; // skip — don't store empty hash
+
+                    if (field.FieldType == "pin")
+                    {
+                        if (plain.Length < 4 || plain.Length > 8 || !plain.All(char.IsDigit))
+                            throw new ArgumentException($"Campo '{field.DisplayName}': PIN deve ter 4 a 8 dígitos numéricos");
+                    }
+
+                    rawValue = BCrypt.Net.BCrypt.HashPassword(plain, workFactor: 10);
+                }
+
                 columns.Add(field.ColumnName);
-                
-                var convertedValue = ConvertJsonElement(values[field.Name]);
-                
+
                 // Add explicit cast for UUID fields
-                if (field.DataType == "uuid" && convertedValue != null)
-                {
+                if (field.DataType == "uuid" && rawValue != null)
                     paramNames.Add($"@{field.Name}::uuid");
-                }
                 else
-                {
                     paramNames.Add($"@{field.Name}");
-                }
-                
-                parameters.Add(field.Name, convertedValue);
+
+                parameters.Add(field.Name, rawValue);
             }
             else if (field.IsRequired && field.DefaultValue != null)
             {
@@ -474,7 +486,7 @@ public class DynamicCrudService
                 parameters.Add(field.Name, field.DefaultValue);
             }
         }
-        
+
         columns.Add("created_at");
         columns.Add("updated_at");
         paramNames.Add("@created_at");
@@ -514,19 +526,31 @@ public class DynamicCrudService
         {
             if (values.ContainsKey(field.Name))
             {
-                var convertedValue = ConvertJsonElement(values[field.Name]);
-                
+                var rawValue = ConvertJsonElement(values[field.Name]);
+
+                // Hash password/pin fields; skip if empty (user didn't change it)
+                if (field.FieldType is "password" or "pin")
+                {
+                    var plain = rawValue?.ToString();
+                    if (string.IsNullOrEmpty(plain))
+                        continue;
+
+                    if (field.FieldType == "pin")
+                    {
+                        if (plain.Length < 4 || plain.Length > 8 || !plain.All(char.IsDigit))
+                            throw new ArgumentException($"Campo '{field.DisplayName}': PIN deve ter 4 a 8 dígitos numéricos");
+                    }
+
+                    rawValue = BCrypt.Net.BCrypt.HashPassword(plain, workFactor: 10);
+                }
+
                 // Add explicit cast for UUID fields
-                if (field.DataType == "uuid" && convertedValue != null)
-                {
+                if (field.DataType == "uuid" && rawValue != null)
                     setFields.Add($"{field.ColumnName} = @{field.Name}::uuid");
-                }
                 else
-                {
                     setFields.Add($"{field.ColumnName} = @{field.Name}");
-                }
-                
-                parameters.Add(field.Name, convertedValue);
+
+                parameters.Add(field.Name, rawValue);
             }
         }
         
