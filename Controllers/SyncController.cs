@@ -152,4 +152,48 @@ public class SyncController : ControllerBase
             return StatusCode(500, new { error = "Erro interno ao buscar produtos" });
         }
     }
+
+    /// <summary>
+    /// Retorna formas de pagamento para sincronização do agente.
+    /// </summary>
+    [HttpGet("payment-methods")]
+    public async Task<IActionResult> GetPaymentMethods()
+    {
+        var tenant = GetTenantSubdomain();
+        try
+        {
+            using var connection = new NpgsqlConnection(GetConnectionString(tenant));
+
+            const string sql = """
+                SELECT
+                    pm.id::text AS id,
+                    pm.id::text AS external_id,
+                    pm.description AS descricao,
+                    pt.code AS tipo,
+                    NULL::text AS codigo,
+                    pm.active AS ativo,
+                    CASE WHEN pt.code = 'DINHEIRO' THEN true ELSE false END AS permite_troco,
+                    NULL::int AS maximo_parcelas,
+                    NULL::numeric AS taxa_juros,
+                    false AS requer_tef,
+                    NULL::text AS bandeira,
+                    ROW_NUMBER() OVER (ORDER BY pm.description) AS ordem,
+                    pm.created_at,
+                    pm.updated_at
+                FROM payment_methods pm
+                JOIN payment_types pt ON pt.id = pm.payment_type_id
+                WHERE pm.active = true
+                ORDER BY pm.description
+                """;
+
+            var formasPagamento = (await connection.QueryAsync(sql)).ToList();
+
+            return Ok(new { formas_pagamento = formasPagamento, total = formasPagamento.Count });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao buscar formas de pagamento para sincronização (tenant: {Tenant})", tenant);
+            return StatusCode(500, new { error = "Erro interno ao buscar formas de pagamento" });
+        }
+    }
 }
