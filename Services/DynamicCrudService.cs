@@ -453,6 +453,10 @@ public class DynamicCrudService
             {
                 var rawValue = ConvertJsonElement(values[field.Name]);
 
+                // Coerce string "true"/"false" to bool for boolean columns
+                if (field.DataType == "boolean" && rawValue is string boolStrCreate)
+                    rawValue = boolStrCreate.Equals("true", StringComparison.OrdinalIgnoreCase);
+
                 // Hash password/pin fields with BCrypt before storing
                 if (field.FieldType is "password" or "pin")
                 {
@@ -527,6 +531,10 @@ public class DynamicCrudService
             if (values.ContainsKey(field.Name))
             {
                 var rawValue = ConvertJsonElement(values[field.Name]);
+
+                // Coerce string "true"/"false" to bool for boolean columns
+                if (field.DataType == "boolean" && rawValue is string boolStrUpdate)
+                    rawValue = boolStrUpdate.Equals("true", StringComparison.OrdinalIgnoreCase);
 
                 // Hash password/pin fields; skip if empty (user didn't change it)
                 if (field.FieldType is "password" or "pin")
