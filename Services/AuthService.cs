@@ -185,11 +185,13 @@ public class AuthService
             var tenant = principal.FindFirst("tenant")?.Value;
             var role = principal.FindFirst(ClaimTypes.Role)?.Value; // Use ClaimTypes.Role instead of "role"
             var type = principal.FindFirst("type")?.Value;
+            var storeId = principal.FindFirst("storeId")?.Value;
 
             return new TokenPayload
             {
                 UserId = Guid.Parse(userId ?? string.Empty),
                 EmpresaId = Guid.Parse(empresaId ?? string.Empty),
+                StoreId = Guid.TryParse(storeId, out var sid) ? sid : Guid.Empty,
                 TenantId = Guid.Parse(tenantId ?? string.Empty),
                 Tenant = tenant ?? string.Empty,
                 Role = role ?? string.Empty,

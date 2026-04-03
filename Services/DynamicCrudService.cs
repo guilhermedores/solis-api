@@ -605,6 +605,10 @@ public class DynamicCrudService
     /// </summary>
     public bool HasPermission(EntityMetadata entity, string role, string operation)
     {
+        // Agentes PDV têm permissão de leitura em todas as entidades (usada para sincronização)
+        if (role == "agent" && operation.Equals("read", StringComparison.OrdinalIgnoreCase))
+            return entity.AllowRead;
+
         var permission = entity.Permissions.FirstOrDefault(p => p.Role == role);
         if (permission == null)
             return false;

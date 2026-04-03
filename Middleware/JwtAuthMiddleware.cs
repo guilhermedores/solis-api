@@ -85,6 +85,7 @@ public class JwtAuthMiddleware
                 context.Items["TenantSubdomain"] = payload.Tenant;
                 context.Items["UserRole"] = payload.Role;
                 context.Items["UserId"] = payload.UserId;
+                context.Items["StoreId"] = payload.StoreId;
             }
         }
 

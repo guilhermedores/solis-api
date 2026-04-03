@@ -303,7 +303,7 @@ public class DynamicCrudController : ControllerBase
                                 if (currentRecord != null)
                                 {
                                     var currentLabel = currentRecord.GetValue<string>(field.Relationship.DisplayField ?? "name");
-                                    options.Insert(0, new { value = currentIdStr, label = currentLabel ?? currentIdStr });
+                                    options.Insert(0, new { value = currentIdStr, label = (string?)(currentLabel ?? currentIdStr) });
                                 }
                             }
                         }
