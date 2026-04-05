@@ -242,6 +242,7 @@ public class ReportService
             {
                 "number" => int.TryParse(stringValue, out var intVal) ? intVal : stringValue,
                 "decimal" => decimal.TryParse(stringValue, out var decVal) ? decVal : stringValue,
+                "uuid" => Guid.TryParse(stringValue, out var guidVal) ? guidVal : stringValue,
                 _ => stringValue
             };
         }

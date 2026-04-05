@@ -10,14 +10,10 @@ namespace SolisApi.Controllers;
 public class DynamicCrudController : ControllerBase
 {
     private readonly DynamicCrudService _dynamicCrudService;
-    private readonly ILogger<DynamicCrudController> _logger;
 
-    public DynamicCrudController(
-        DynamicCrudService dynamicCrudService,
-        ILogger<DynamicCrudController> logger)
+    public DynamicCrudController(DynamicCrudService dynamicCrudService)
     {
         _dynamicCrudService = dynamicCrudService;
-        _logger = logger;
     }
 
     private string GetTenantSubdomain()
@@ -36,25 +32,17 @@ public class DynamicCrudController : ControllerBase
     [HttpGet("_metadata")]
     public async Task<IActionResult> GetMetadata(string entityName)
     {
-        try
-        {
-            var tenant = GetTenantSubdomain();
-            var metadata = await _dynamicCrudService.GetEntityMetadataAsync(tenant, entityName);
-            
-            if (metadata == null)
-                return NotFound(new { error = $"Entity '{entityName}' not found" });
-            
-            var role = GetUserRole();
-            if (!_dynamicCrudService.HasPermission(metadata, role, "read"))
-                return StatusCode(403, new { success = false, error = "Acesso negado. Permissão insuficiente." });
-            
-            return Ok(metadata);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting metadata for entity {EntityName}", entityName);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        var tenant = GetTenantSubdomain();
+        var metadata = await _dynamicCrudService.GetEntityMetadataAsync(tenant, entityName);
+
+        if (metadata == null)
+            return NotFound(new { error = $"Entity '{entityName}' not found" });
+
+        var role = GetUserRole();
+        if (!_dynamicCrudService.HasPermission(metadata, role, "read"))
+            return StatusCode(403, new { success = false, error = "Acesso negado. Permissão insuficiente." });
+
+        return Ok(metadata);
     }
 
     /// <summary>
@@ -70,45 +58,34 @@ public class DynamicCrudController : ControllerBase
         [FromQuery] bool ascending = true,
         [FromQuery] bool? active = null)
     {
-        try
+        var tenant = GetTenantSubdomain();
+        var metadata = await _dynamicCrudService.GetEntityMetadataAsync(tenant, entityName);
+
+        if (metadata == null)
+            return NotFound(new { error = $"Entity '{entityName}' not found" });
+
+        var role = GetUserRole();
+        if (!_dynamicCrudService.HasPermission(metadata, role, "read"))
+            return StatusCode(403, new { success = false, error = "Acesso negado. Permissão insuficiente." });
+
+        Dictionary<string, object>? filters = null;
+        if (active.HasValue)
+            filters = new Dictionary<string, object> { { "active", active.Value } };
+
+        var (data, totalCount) = await _dynamicCrudService.ListAsync(
+            tenant, metadata, page, pageSize, search, filters, orderBy, ascending);
+
+        return Ok(new
         {
-            var tenant = GetTenantSubdomain();
-            var metadata = await _dynamicCrudService.GetEntityMetadataAsync(tenant, entityName);
-            
-            if (metadata == null)
-                return NotFound(new { error = $"Entity '{entityName}' not found" });
-            
-            var role = GetUserRole();
-            if (!_dynamicCrudService.HasPermission(metadata, role, "read"))
-                return StatusCode(403, new { success = false, error = "Acesso negado. Permissão insuficiente." });
-            
-            // Build filters
-            Dictionary<string, object>? filters = null;
-            if (active.HasValue)
+            data,
+            pagination = new
             {
-                filters = new Dictionary<string, object> { { "active", active.Value } };
+                page,
+                pageSize,
+                totalCount,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
             }
-            
-            var (data, totalCount) = await _dynamicCrudService.ListAsync(
-                tenant, metadata, page, pageSize, search, filters, orderBy, ascending);
-            
-            return Ok(new
-            {
-                data,
-                pagination = new
-                {
-                    page,
-                    pageSize,
-                    totalCount,
-                    totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error listing {EntityName}", entityName);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        });
     }
 
     /// <summary>
@@ -117,30 +94,22 @@ public class DynamicCrudController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(string entityName, Guid id)
     {
-        try
-        {
-            var tenant = GetTenantSubdomain();
-            var metadata = await _dynamicCrudService.GetEntityMetadataAsync(tenant, entityName);
-            
-            if (metadata == null)
-                return NotFound(new { error = $"Entity '{entityName}' not found" });
-            
-            var role = GetUserRole();
-            if (!_dynamicCrudService.HasPermission(metadata, role, "read"))
-                return StatusCode(403, new { success = false, error = "Acesso negado. Permissão insuficiente." });
-            
-            var data = await _dynamicCrudService.GetByIdAsync(tenant, metadata, id);
-            
-            if (data == null)
-                return NotFound(new { error = $"{metadata.DisplayName} not found" });
-            
-            return Ok(data);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting {EntityName} by ID {Id}", entityName, id);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        var tenant = GetTenantSubdomain();
+        var metadata = await _dynamicCrudService.GetEntityMetadataAsync(tenant, entityName);
+
+        if (metadata == null)
+            return NotFound(new { error = $"Entity '{entityName}' not found" });
+
+        var role = GetUserRole();
+        if (!_dynamicCrudService.HasPermission(metadata, role, "read"))
+            return StatusCode(403, new { success = false, error = "Acesso negado. Permissão insuficiente." });
+
+        var data = await _dynamicCrudService.GetByIdAsync(tenant, metadata, id);
+
+        if (data == null)
+            return NotFound(new { error = $"{metadata.DisplayName} not found" });
+
+        return Ok(data);
     }
 
     /// <summary>
@@ -149,40 +118,25 @@ public class DynamicCrudController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(string entityName, [FromBody] Dictionary<string, object?> data)
     {
-        try
-        {
-            var tenant = GetTenantSubdomain();
-            var metadata = await _dynamicCrudService.GetEntityMetadataAsync(tenant, entityName);
-            
-            if (metadata == null)
-                return NotFound(new { error = $"Entity '{entityName}' not found" });
-            
-            var role = GetUserRole();
-            if (!_dynamicCrudService.HasPermission(metadata, role, "create"))
-                return StatusCode(403, new { success = false, error = "Acesso negado. Permissão insuficiente." });
-            
-            // Validate required fields
-            var requiredFields = metadata.Fields.Where(f => f.IsRequired && f.ShowInCreate && !f.IsSystemField).ToList();
-            var missingFields = requiredFields.Where(f => !data.ContainsKey(f.Name) || data[f.Name] == null).ToList();
-            
-            if (missingFields.Any())
-            {
-                return BadRequest(new
-                {
-                    error = "Missing required fields",
-                    fields = missingFields.Select(f => f.Name)
-                });
-            }
-            
-            var id = await _dynamicCrudService.CreateAsync(tenant, metadata, data);
-            
-            return CreatedAtAction(nameof(GetById), new { entityName, id }, new { id });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error creating {EntityName}", entityName);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        var tenant = GetTenantSubdomain();
+        var metadata = await _dynamicCrudService.GetEntityMetadataAsync(tenant, entityName);
+
+        if (metadata == null)
+            return NotFound(new { error = $"Entity '{entityName}' not found" });
+
+        var role = GetUserRole();
+        if (!_dynamicCrudService.HasPermission(metadata, role, "create"))
+            return StatusCode(403, new { success = false, error = "Acesso negado. Permissão insuficiente." });
+
+        var requiredFields = metadata.Fields.Where(f => f.IsRequired && f.ShowInCreate && !f.IsSystemField).ToList();
+        var missingFields = requiredFields.Where(f => !data.ContainsKey(f.Name) || data[f.Name] == null).ToList();
+
+        if (missingFields.Any())
+            return BadRequest(new { error = "Missing required fields", fields = missingFields.Select(f => f.Name) });
+
+        var id = await _dynamicCrudService.CreateAsync(tenant, metadata, data);
+
+        return CreatedAtAction(nameof(GetById), new { entityName, id }, new { id });
     }
 
     /// <summary>
@@ -191,30 +145,22 @@ public class DynamicCrudController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(string entityName, Guid id, [FromBody] Dictionary<string, object?> data)
     {
-        try
-        {
-            var tenant = GetTenantSubdomain();
-            var metadata = await _dynamicCrudService.GetEntityMetadataAsync(tenant, entityName);
-            
-            if (metadata == null)
-                return NotFound(new { error = $"Entity '{entityName}' not found" });
-            
-            var role = GetUserRole();
-            if (!_dynamicCrudService.HasPermission(metadata, role, "update"))
-                return StatusCode(403, new { success = false, error = "Acesso negado. Permissão insuficiente." });
-            
-            var success = await _dynamicCrudService.UpdateAsync(tenant, metadata, id, data);
-            
-            if (!success)
-                return NotFound(new { error = $"{metadata.DisplayName} not found" });
-            
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating {EntityName} with ID {Id}", entityName, id);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        var tenant = GetTenantSubdomain();
+        var metadata = await _dynamicCrudService.GetEntityMetadataAsync(tenant, entityName);
+
+        if (metadata == null)
+            return NotFound(new { error = $"Entity '{entityName}' not found" });
+
+        var role = GetUserRole();
+        if (!_dynamicCrudService.HasPermission(metadata, role, "update"))
+            return StatusCode(403, new { success = false, error = "Acesso negado. Permissão insuficiente." });
+
+        var success = await _dynamicCrudService.UpdateAsync(tenant, metadata, id, data);
+
+        if (!success)
+            return NotFound(new { error = $"{metadata.DisplayName} not found" });
+
+        return NoContent();
     }
 
     /// <summary>
@@ -223,30 +169,22 @@ public class DynamicCrudController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(string entityName, Guid id)
     {
-        try
-        {
-            var tenant = GetTenantSubdomain();
-            var metadata = await _dynamicCrudService.GetEntityMetadataAsync(tenant, entityName);
-            
-            if (metadata == null)
-                return NotFound(new { error = $"Entity '{entityName}' not found" });
-            
-            var role = GetUserRole();
-            if (!_dynamicCrudService.HasPermission(metadata, role, "delete"))
-                return StatusCode(403, new { success = false, error = "Acesso negado. Permissão insuficiente." });
-            
-            var success = await _dynamicCrudService.DeleteAsync(tenant, metadata, id);
-            
-            if (!success)
-                return NotFound(new { error = $"{metadata.DisplayName} not found" });
-            
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error deleting {EntityName} with ID {Id}", entityName, id);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        var tenant = GetTenantSubdomain();
+        var metadata = await _dynamicCrudService.GetEntityMetadataAsync(tenant, entityName);
+
+        if (metadata == null)
+            return NotFound(new { error = $"Entity '{entityName}' not found" });
+
+        var role = GetUserRole();
+        if (!_dynamicCrudService.HasPermission(metadata, role, "delete"))
+            return StatusCode(403, new { success = false, error = "Acesso negado. Permissão insuficiente." });
+
+        var success = await _dynamicCrudService.DeleteAsync(tenant, metadata, id);
+
+        if (!success)
+            return NotFound(new { error = $"{metadata.DisplayName} not found" });
+
+        return NoContent();
     }
 
     /// <summary>
@@ -255,70 +193,55 @@ public class DynamicCrudController : ControllerBase
     [HttpGet("{id}/options/{fieldName}")]
     public async Task<IActionResult> GetFieldOptions(string entityName, Guid id, string fieldName, [FromQuery] string? search = null)
     {
-        try
+        var tenant = GetTenantSubdomain();
+        var metadata = await _dynamicCrudService.GetEntityMetadataAsync(tenant, entityName);
+
+        if (metadata == null)
+            return NotFound(new { error = $"Entity '{entityName}' not found" });
+
+        var field = metadata.Fields.FirstOrDefault(f => f.Name == fieldName);
+        if (field == null)
+            return NotFound(new { error = $"Field '{fieldName}' not found" });
+
+        if (field.Options.Any())
+            return Ok(field.Options);
+
+        if (field.Relationship != null)
         {
-            var tenant = GetTenantSubdomain();
-            var metadata = await _dynamicCrudService.GetEntityMetadataAsync(tenant, entityName);
-            
-            if (metadata == null)
-                return NotFound(new { error = $"Entity '{entityName}' not found" });
-            
-            var field = metadata.Fields.FirstOrDefault(f => f.Name == fieldName);
-            if (field == null)
-                return NotFound(new { error = $"Field '{fieldName}' not found" });
-            
-            // If field has static options
-            if (field.Options.Any())
+            var relatedMetadata = await _dynamicCrudService.GetEntityMetadataAsync(tenant, field.Relationship.RelatedEntityName!);
+            if (relatedMetadata != null)
             {
-                return Ok(field.Options);
-            }
-            
-            // If field has relationship (dynamic options)
-            if (field.Relationship != null)
-            {
-                var relatedMetadata = await _dynamicCrudService.GetEntityMetadataAsync(tenant, field.Relationship.RelatedEntityName!);
-                if (relatedMetadata != null)
+                var (data, _) = await _dynamicCrudService.ListAsync(tenant, relatedMetadata, 1, 200, search);
+
+                var options = data.Select(d => new
                 {
-                    var (data, _) = await _dynamicCrudService.ListAsync(tenant, relatedMetadata, 1, 200, search);
+                    value = d.GetValue<Guid>("id").ToString(),
+                    label = d.GetValue<string>(field.Relationship.DisplayField ?? "name")
+                }).ToList();
 
-                    var options = data.Select(d => new
+                if (id != Guid.Empty && string.IsNullOrEmpty(search))
+                {
+                    var record = await _dynamicCrudService.GetByIdAsync(tenant, metadata, id);
+                    if (record != null)
                     {
-                        value = d.GetValue<Guid>("id").ToString(),
-                        label = d.GetValue<string>(field.Relationship.DisplayField ?? "name")
-                    }).ToList();
-
-                    // When editing (real record ID), ensure the currently selected value is included
-                    // even if it falls outside the first 200 results (e.g. NCM with 10k+ records)
-                    if (id != Guid.Empty && string.IsNullOrEmpty(search))
-                    {
-                        var record = await _dynamicCrudService.GetByIdAsync(tenant, metadata, id);
-                        if (record != null)
+                        var currentId = record.GetValue<Guid>(field.Name);
+                        var currentIdStr = currentId.ToString();
+                        if (currentId != Guid.Empty && !options.Any(o => o.value == currentIdStr))
                         {
-                            var currentId = record.GetValue<Guid>(field.Name);
-                            var currentIdStr = currentId.ToString();
-                            if (currentId != Guid.Empty && !options.Any(o => o.value == currentIdStr))
+                            var currentRecord = await _dynamicCrudService.GetByIdAsync(tenant, relatedMetadata, currentId);
+                            if (currentRecord != null)
                             {
-                                var currentRecord = await _dynamicCrudService.GetByIdAsync(
-                                    tenant, relatedMetadata, currentId);
-                                if (currentRecord != null)
-                                {
-                                    var currentLabel = currentRecord.GetValue<string>(field.Relationship.DisplayField ?? "name");
-                                    options.Insert(0, new { value = currentIdStr, label = (string?)(currentLabel ?? currentIdStr) });
-                                }
+                                var currentLabel = currentRecord.GetValue<string>(field.Relationship.DisplayField ?? "name");
+                                options.Insert(0, new { value = currentIdStr, label = (string?)(currentLabel ?? currentIdStr) });
                             }
                         }
                     }
-
-                    return Ok(options);
                 }
+
+                return Ok(options);
             }
-            
-            return Ok(Array.Empty<object>());
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting options for {EntityName}.{FieldName}", entityName, fieldName);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+
+        return Ok(Array.Empty<object>());
     }
 }

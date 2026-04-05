@@ -29,64 +29,29 @@ public class TenantsController : ControllerBase
     [HttpGet("check/{subdomain}")]
     public async Task<IActionResult> CheckTenant(string subdomain)
     {
-        try
+        if (string.IsNullOrWhiteSpace(subdomain))
+            return BadRequest(new { exists = false, error = "Subdomain é obrigatório" });
+
+        subdomain = subdomain.Trim().ToLowerInvariant();
+
+        var tenant = await _context.Tenants
+            .Where(t => t.Subdomain == subdomain)
+            .Select(t => new { t.Subdomain, t.TradeName, t.Active })
+            .FirstOrDefaultAsync();
+
+        if (tenant == null)
         {
-            if (string.IsNullOrWhiteSpace(subdomain))
-            {
-                return BadRequest(new { 
-                    exists = false, 
-                    error = "Subdomain é obrigatório" 
-                });
-            }
-
-            // Normalizar subdomain (lowercase, trim)
-            subdomain = subdomain.Trim().ToLowerInvariant();
-
-            // Verificar se tenant existe e está ativo
-            var tenant = await _context.Tenants
-                .Where(t => t.Subdomain == subdomain)
-                .Select(t => new { 
-                    t.Subdomain, 
-                    t.TradeName, 
-                    t.Active 
-                })
-                .FirstOrDefaultAsync();
-
-            if (tenant == null)
-            {
-                _logger.LogInformation("Tenant check: subdomain '{Subdomain}' não encontrado", subdomain);
-                return Ok(new { 
-                    exists = false,
-                    subdomain = subdomain
-                });
-            }
-
-            if (!tenant.Active)
-            {
-                _logger.LogInformation("Tenant check: subdomain '{Subdomain}' existe mas está inativo", subdomain);
-                return Ok(new { 
-                    exists = true,
-                    active = false,
-                    subdomain = tenant.Subdomain,
-                    tradeName = tenant.TradeName
-                });
-            }
-
-            _logger.LogInformation("Tenant check: subdomain '{Subdomain}' encontrado e ativo", subdomain);
-            return Ok(new { 
-                exists = true,
-                active = true,
-                subdomain = tenant.Subdomain,
-                tradeName = tenant.TradeName
-            });
+            _logger.LogInformation("Tenant check: subdomain '{Subdomain}' não encontrado", subdomain);
+            return Ok(new { exists = false, subdomain });
         }
-        catch (Exception ex)
+
+        if (!tenant.Active)
         {
-            _logger.LogError(ex, "Erro ao verificar tenant {Subdomain}", subdomain);
-            return StatusCode(500, new { 
-                exists = false, 
-                error = "Erro ao verificar tenant" 
-            });
+            _logger.LogInformation("Tenant check: subdomain '{Subdomain}' existe mas está inativo", subdomain);
+            return Ok(new { exists = true, active = false, subdomain = tenant.Subdomain, tradeName = tenant.TradeName });
         }
+
+        _logger.LogInformation("Tenant check: subdomain '{Subdomain}' encontrado e ativo", subdomain);
+        return Ok(new { exists = true, active = true, subdomain = tenant.Subdomain, tradeName = tenant.TradeName });
     }
 }

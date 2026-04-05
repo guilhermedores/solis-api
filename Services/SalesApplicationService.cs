@@ -265,7 +265,7 @@ public class SalesApplicationService : ISalesService
         {
             try
             {
-                var result = await CreateSaleAsync(tenantSchema, saleRequest, null, cancellationToken);
+                var result = await CreateSaleAsync(tenantSubdomain, saleRequest, null, cancellationToken);
                 results.Add(new SaleSyncResult
                 {
                     ClientSaleId = saleRequest.ClientSaleId,
@@ -296,6 +296,32 @@ public class SalesApplicationService : ISalesService
                 Errors = results.Count(r => r.Status == "failed")
             }
         };
+    }
+
+    public async Task<SaleResponse> CancelByClientSaleIdAsync(
+        string tenantSubdomain,
+        Guid clientSaleId,
+        CancelSaleRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var tenantSchema = $"tenant_{tenantSubdomain}";
+        var sale = await _saleRepository.GetByClientSaleIdAsync(tenantSchema, clientSaleId, cancellationToken);
+        if (sale == null)
+            throw new KeyNotFoundException($"Sale with ClientSaleId {clientSaleId} not found");
+
+        sale.Cancel(
+            request.Reason ?? "Cancelled by agent",
+            request.Source ?? "pos",
+            request.CancellationType,
+            request.RefundAmount);
+
+        await _saleRepository.UpdateAsync(tenantSchema, sale, cancellationToken);
+
+        _logger.LogInformation(
+            "Sale canceled by ClientSaleId: ClientSaleId={ClientSaleId}, SaleId={SaleId}",
+            clientSaleId, sale.Id);
+
+        return MapToResponse(sale);
     }
 
     // Mapping method

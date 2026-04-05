@@ -13,9 +13,7 @@ public class SalesController : ControllerBase
     private readonly ISalesService _salesService;
     private readonly ILogger<SalesController> _logger;
 
-    public SalesController(
-        ISalesService salesService,
-        ILogger<SalesController> logger)
+    public SalesController(ISalesService salesService, ILogger<SalesController> logger)
     {
         _salesService = salesService;
         _logger = logger;
@@ -26,12 +24,7 @@ public class SalesController : ControllerBase
         return HttpContext.Items["TenantSubdomain"]?.ToString();
     }
 
-    /// <summary>
-    /// Create a new sale
-    /// </summary>
-    /// <param name="request">Sale creation request</param>
-    /// <param name="idempotencyKey">Idempotency key (optional header: Idempotency-Key)</param>
-    /// <returns>Created sale</returns>
+    /// <summary>Create a new sale</summary>
     [HttpPost]
     [ProducesResponseType(typeof(SaleResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -40,81 +33,49 @@ public class SalesController : ControllerBase
         [FromBody] CreateSaleRequest request,
         [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey = null)
     {
-        try
-        {
-            var tenantSubdomain = GetTenantSubdomain();
-            if (string.IsNullOrEmpty(tenantSubdomain))
-                return Unauthorized(new { error = "Tenant not found" });
+        var tenantSubdomain = GetTenantSubdomain();
+        if (string.IsNullOrEmpty(tenantSubdomain))
+            return Unauthorized(new { error = "Tenant not found" });
 
-            var requestId = HttpContext.Items["RequestId"]?.ToString();
-            _logger.LogInformation(
-                "Creating sale: RequestId={RequestId}, StoreId={StoreId}, ItemCount={ItemCount}",
-                requestId, request.StoreId, request.Items.Count);
+        var requestId = HttpContext.Items["RequestId"]?.ToString();
+        _logger.LogInformation(
+            "Creating sale: RequestId={RequestId}, StoreId={StoreId}, ItemCount={ItemCount}",
+            requestId, request.StoreId, request.Items.Count);
 
-            var sale = await _salesService.CreateSaleAsync(tenantSubdomain, request, idempotencyKey);
+        var sale = await _salesService.CreateSaleAsync(tenantSubdomain, request, idempotencyKey);
 
-            _logger.LogInformation(
-                "Sale created: RequestId={RequestId}, SaleId={SaleId}, Total={Total}",
-                requestId, sale.Id, sale.Total);
+        _logger.LogInformation(
+            "Sale created: RequestId={RequestId}, SaleId={SaleId}, Total={Total}",
+            requestId, sale.Id, sale.Total);
 
-            return CreatedAtAction(nameof(GetSaleById), new { id = sale.Id }, sale);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error creating sale");
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
-        }
+        return CreatedAtAction(nameof(GetSaleById), new { id = sale.Id }, sale);
     }
 
-    /// <summary>
-    /// Sync multiple sales (batch operation for offline POS)
-    /// </summary>
-    /// <param name="request">Batch of sales to sync</param>
-    /// <returns>Sync results with 207 Multi-Status</returns>
+    /// <summary>Sync multiple sales (batch operation for offline POS)</summary>
     [HttpPost("sync")]
     [ProducesResponseType(typeof(SaleSyncResponse), StatusCodes.Status207MultiStatus)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<SaleSyncResponse>> SyncSales([FromBody] SaleSyncRequest request)
     {
-        try
-        {
-            var tenantSubdomain = GetTenantSubdomain();
-            if (string.IsNullOrEmpty(tenantSubdomain))
-                return Unauthorized(new { error = "Tenant not found" });
+        var tenantSubdomain = GetTenantSubdomain();
+        if (string.IsNullOrEmpty(tenantSubdomain))
+            return Unauthorized(new { error = "Tenant not found" });
 
-            var requestId = HttpContext.Items["RequestId"]?.ToString();
-            _logger.LogInformation(
-                "Syncing sales: RequestId={RequestId}, Count={Count}",
-                requestId, request.Sales.Count);
+        var requestId = HttpContext.Items["RequestId"]?.ToString();
+        _logger.LogInformation(
+            "Syncing sales: RequestId={RequestId}, Count={Count}",
+            requestId, request.Sales.Count);
 
-            var result = await _salesService.SyncSalesAsync(tenantSubdomain, request);
+        var result = await _salesService.SyncSalesAsync(tenantSubdomain, request);
 
-            _logger.LogInformation(
-                "Sales synced: RequestId={RequestId}, Total={Total}, Created={Created}, Errors={Errors}",
-                requestId, result.Summary.Total, result.Summary.Created, result.Summary.Errors);
+        _logger.LogInformation(
+            "Sales synced: RequestId={RequestId}, Total={Total}, Created={Created}, Errors={Errors}",
+            requestId, result.Summary.Total, result.Summary.Created, result.Summary.Errors);
 
-            return StatusCode(207, result); // 207 Multi-Status
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error syncing sales");
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
-        }
+        return StatusCode(207, result);
     }
 
-    /// <summary>
-    /// Get sales with filters and pagination
-    /// </summary>
-    /// <param name="storeId">Filter by store</param>
-    /// <param name="posId">Filter by POS</param>
-    /// <param name="operatorId">Filter by operator</param>
-    /// <param name="dateFrom">Filter by date from</param>
-    /// <param name="dateTo">Filter by date to</param>
-    /// <param name="status">Filter by status</param>
-    /// <param name="clientSaleId">Filter by client sale ID (offline sync)</param>
-    /// <param name="page">Page number (default: 1)</param>
-    /// <param name="pageSize">Page size (default: 20)</param>
-    /// <returns>List of sales with pagination</returns>
+    /// <summary>Get sales with filters and pagination</summary>
     [HttpGet]
     [ProducesResponseType(typeof(SaleListResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -130,72 +91,47 @@ public class SalesController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
-        try
-        {
-            var tenantSubdomain = GetTenantSubdomain();
-            if (string.IsNullOrEmpty(tenantSubdomain))
-                return Unauthorized(new { error = "Tenant not found" });
+        var tenantSubdomain = GetTenantSubdomain();
+        if (string.IsNullOrEmpty(tenantSubdomain))
+            return Unauthorized(new { error = "Tenant not found" });
 
-            var query = new SalesQueryParameters
-            {
-                StoreId = storeId,
-                PosId = posId,
-                OperatorId = operatorId,
-                DateFrom = dateFrom,
-                DateTo = dateTo,
-                Status = status,
-                ClientSaleId = clientSaleId,
-                CashRegisterId = cashRegisterId,
-                Page = page,
-                PageSize = pageSize
-            };
-
-            var result = await _salesService.GetSalesAsync(tenantSubdomain, query);
-            return Ok(result);
-        }
-        catch (Exception ex)
+        var query = new SalesQueryParameters
         {
-            _logger.LogError(ex, "Error getting sales");
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
-        }
+            StoreId = storeId,
+            PosId = posId,
+            OperatorId = operatorId,
+            DateFrom = dateFrom,
+            DateTo = dateTo,
+            Status = status,
+            ClientSaleId = clientSaleId,
+            CashRegisterId = cashRegisterId,
+            Page = page,
+            PageSize = pageSize
+        };
+
+        var result = await _salesService.GetSalesAsync(tenantSubdomain, query);
+        return Ok(result);
     }
 
-    /// <summary>
-    /// Get sale by ID with full details
-    /// </summary>
-    /// <param name="id">Sale ID</param>
-    /// <returns>Sale details including items, payments, taxes, and cancellation</returns>
+    /// <summary>Get sale by ID with full details</summary>
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(SaleResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<SaleResponse>> GetSaleById(Guid id)
     {
-        try
-        {
-            var tenantSubdomain = GetTenantSubdomain();
-            if (string.IsNullOrEmpty(tenantSubdomain))
-                return Unauthorized(new { error = "Tenant not found" });
+        var tenantSubdomain = GetTenantSubdomain();
+        if (string.IsNullOrEmpty(tenantSubdomain))
+            return Unauthorized(new { error = "Tenant not found" });
 
-            var sale = await _salesService.GetSaleByIdAsync(tenantSubdomain, id);
-            if (sale == null)
-                return NotFound(new { error = "Sale not found", saleId = id });
+        var sale = await _salesService.GetSaleByIdAsync(tenantSubdomain, id);
+        if (sale == null)
+            return NotFound(new { error = "Sale not found", saleId = id });
 
-            return Ok(sale);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting sale: SaleId={SaleId}", id);
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
-        }
+        return Ok(sale);
     }
 
-    /// <summary>
-    /// Update sale (limited fields: status, payment_status)
-    /// </summary>
-    /// <param name="id">Sale ID</param>
-    /// <param name="request">Update request</param>
-    /// <returns>Updated sale</returns>
+    /// <summary>Update sale (limited fields: status, payment_status)</summary>
     [HttpPatch("{id}")]
     [ProducesResponseType(typeof(SaleResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -203,12 +139,12 @@ public class SalesController : ControllerBase
     [RequireRole("admin", "manager")]
     public async Task<ActionResult<SaleResponse>> UpdateSale(Guid id, [FromBody] UpdateSaleRequest request)
     {
+        var tenantSubdomain = GetTenantSubdomain();
+        if (string.IsNullOrEmpty(tenantSubdomain))
+            return Unauthorized(new { error = "Tenant not found" });
+
         try
         {
-            var tenantSubdomain = GetTenantSubdomain();
-            if (string.IsNullOrEmpty(tenantSubdomain))
-                return Unauthorized(new { error = "Tenant not found" });
-
             var sale = await _salesService.UpdateSaleAsync(tenantSubdomain, id, request);
             return Ok(sale);
         }
@@ -216,19 +152,9 @@ public class SalesController : ControllerBase
         {
             return NotFound(new { error = "Sale not found", saleId = id });
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating sale: SaleId={SaleId}", id);
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
-        }
     }
 
-    /// <summary>
-    /// Add payment to sale
-    /// </summary>
-    /// <param name="id">Sale ID</param>
-    /// <param name="request">Payment request</param>
-    /// <returns>Updated sale with new payment</returns>
+    /// <summary>Add payment to sale</summary>
     [HttpPost("{id}/payments")]
     [ProducesResponseType(typeof(SaleResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -236,12 +162,12 @@ public class SalesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<SaleResponse>> AddPayment(Guid id, [FromBody] SalePaymentRequest request)
     {
+        var tenantSubdomain = GetTenantSubdomain();
+        if (string.IsNullOrEmpty(tenantSubdomain))
+            return Unauthorized(new { error = "Tenant not found" });
+
         try
         {
-            var tenantSubdomain = GetTenantSubdomain();
-            if (string.IsNullOrEmpty(tenantSubdomain))
-                return Unauthorized(new { error = "Tenant not found" });
-
             var result = await _salesService.AddPaymentAsync(tenantSubdomain, id, request);
             return Ok(result);
         }
@@ -253,19 +179,9 @@ public class SalesController : ControllerBase
         {
             return BadRequest(new { error = ex.Message });
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error adding payment: SaleId={SaleId}", id);
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
-        }
     }
 
-    /// <summary>
-    /// Cancel sale
-    /// </summary>
-    /// <param name="id">Sale ID</param>
-    /// <param name="request">Cancellation request</param>
-    /// <returns>Canceled sale</returns>
+    /// <summary>Cancel sale</summary>
     [HttpPost("{id}/cancel")]
     [ProducesResponseType(typeof(SaleResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -274,16 +190,14 @@ public class SalesController : ControllerBase
     [RequireRole("admin", "manager")]
     public async Task<ActionResult<SaleResponse>> CancelSale(Guid id, [FromBody] CancelSaleRequest request)
     {
+        var tenantSubdomain = GetTenantSubdomain();
+        if (string.IsNullOrEmpty(tenantSubdomain))
+            return Unauthorized(new { error = "Tenant not found" });
+
         try
         {
-            var tenantSubdomain = GetTenantSubdomain();
-            if (string.IsNullOrEmpty(tenantSubdomain))
-                return Unauthorized(new { error = "Tenant not found" });
-
             var sale = await _salesService.CancelSaleAsync(tenantSubdomain, id, request);
-
             _logger.LogInformation("Sale canceled: SaleId={SaleId}, Reason={Reason}", id, request.Reason);
-
             return Ok(sale);
         }
         catch (KeyNotFoundException)
@@ -294,36 +208,49 @@ public class SalesController : ControllerBase
         {
             return BadRequest(new { error = ex.Message });
         }
-        catch (Exception ex)
+    }
+
+    /// <summary>Cancel sale by ClientSaleId (for offline POS where server-side ID is unknown)</summary>
+    [HttpPost("cancel-by-client/{clientSaleId:guid}")]
+    [ProducesResponseType(typeof(SaleResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<SaleResponse>> CancelByClientSaleId(
+        Guid clientSaleId,
+        [FromBody] CancelSaleRequest request)
+    {
+        var tenantSubdomain = GetTenantSubdomain();
+        if (string.IsNullOrEmpty(tenantSubdomain))
+            return Unauthorized(new { error = "Tenant not found" });
+
+        try
         {
-            _logger.LogError(ex, "Error canceling sale: SaleId={SaleId}", id);
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            var sale = await _salesService.CancelByClientSaleIdAsync(tenantSubdomain, clientSaleId, request);
+            _logger.LogInformation("Sale canceled by ClientSaleId: {ClientSaleId}", clientSaleId);
+            return Ok(sale);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { error = "Sale not found", clientSaleId });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
         }
     }
 
-    /// <summary>
-    /// Get sync status by ClientSaleId (for offline POS reconciliation)
-    /// </summary>
-    /// <param name="clientSaleId">Client sale ID generated by POS</param>
-    /// <returns>Sync status</returns>
+    /// <summary>Get sync status by ClientSaleId (for offline POS reconciliation)</summary>
     [HttpGet("sync/status")]
     [ProducesResponseType(typeof(SyncStatusResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<SyncStatusResponse>> GetSyncStatus([FromQuery] Guid clientSaleId)
     {
-        try
-        {
-            var tenantSubdomain = GetTenantSubdomain();
-            if (string.IsNullOrEmpty(tenantSubdomain))
-                return Unauthorized(new { error = "Tenant not found" });
+        var tenantSubdomain = GetTenantSubdomain();
+        if (string.IsNullOrEmpty(tenantSubdomain))
+            return Unauthorized(new { error = "Tenant not found" });
 
-            var status = await _salesService.GetSyncStatusAsync(tenantSubdomain, clientSaleId);
-            return Ok(status);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting sync status: ClientSaleId={ClientSaleId}", clientSaleId);
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
-        }
+        var status = await _salesService.GetSyncStatusAsync(tenantSubdomain, clientSaleId);
+        return Ok(status);
     }
 }

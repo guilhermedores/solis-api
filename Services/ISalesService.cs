@@ -15,6 +15,7 @@ public interface ISalesService
     Task<SaleResponse> CancelSaleAsync(string tenantSchema, Guid saleId, CancelSaleRequest request, CancellationToken cancellationToken = default);
     Task<SyncStatusResponse> GetSyncStatusAsync(string tenantSchema, Guid clientSaleId, CancellationToken cancellationToken = default);
     Task<SaleSyncResponse> SyncSalesAsync(string tenantSchema, SaleSyncRequest request, CancellationToken cancellationToken = default);
+    Task<SaleResponse> CancelByClientSaleIdAsync(string tenantSubdomain, Guid clientSaleId, CancelSaleRequest request, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

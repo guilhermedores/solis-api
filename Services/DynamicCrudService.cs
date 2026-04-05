@@ -475,8 +475,8 @@ public class DynamicCrudService
 
                 columns.Add(field.ColumnName);
 
-                // Add explicit cast for UUID fields
-                if (field.DataType == "uuid" && rawValue != null)
+                // Add explicit cast for UUID fields (including null — NULL::uuid is valid in PostgreSQL)
+                if (field.DataType == "uuid")
                     paramNames.Add($"@{field.Name}::uuid");
                 else
                     paramNames.Add($"@{field.Name}");
@@ -552,8 +552,8 @@ public class DynamicCrudService
                     rawValue = BCrypt.Net.BCrypt.HashPassword(plain, workFactor: 10);
                 }
 
-                // Add explicit cast for UUID fields
-                if (field.DataType == "uuid" && rawValue != null)
+                // Add explicit cast for UUID fields (including null — NULL::uuid is valid in PostgreSQL)
+                if (field.DataType == "uuid")
                     setFields.Add($"{field.ColumnName} = @{field.Name}::uuid");
                 else
                     setFields.Add($"{field.ColumnName} = @{field.Name}");

@@ -11,12 +11,10 @@ namespace SolisApi.Controllers;
 public class OperadoresController : ControllerBase
 {
     private readonly IOperadorService _service;
-    private readonly ILogger<OperadoresController> _logger;
 
-    public OperadoresController(IOperadorService service, ILogger<OperadoresController> logger)
+    public OperadoresController(IOperadorService service)
     {
         _service = service;
-        _logger = logger;
     }
 
     private string? GetTenantSubdomain() => HttpContext.Items["TenantSubdomain"]?.ToString();
@@ -40,16 +38,8 @@ public class OperadoresController : ControllerBase
         if (string.IsNullOrEmpty(tenant))
             return Unauthorized(new { error = "Tenant not found" });
 
-        try
-        {
-            var items = await _service.ListForSyncAsync(tenant, ct);
-            return Ok(items);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error listing operators for sync, tenant={Tenant}", tenant);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        var items = await _service.ListForSyncAsync(tenant, ct);
+        return Ok(items);
     }
 
     /// <summary>
@@ -69,18 +59,10 @@ public class OperadoresController : ControllerBase
         if (string.IsNullOrEmpty(tenant))
             return Unauthorized(new { error = "Tenant not found" });
 
-        try
-        {
-            var result = await _service.LoginByPinAsync(tenant, request, ct);
-            if (result == null)
-                return Unauthorized(new { error = "Operador não encontrado ou PIN inválido" });
+        var result = await _service.LoginByPinAsync(tenant, request, ct);
+        if (result == null)
+            return Unauthorized(new { error = "Operador não encontrado ou PIN inválido" });
 
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error on PIN login for operator {OperatorNumber}, tenant={Tenant}", request.OperatorNumber, tenant);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        return Ok(result);
     }
 }
