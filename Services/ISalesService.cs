@@ -24,7 +24,6 @@ public interface ISalesService
 public class SalesQueryParameters
 {
     public Guid? StoreId { get; set; }
-    public Guid? PosId { get; set; }
     public Guid? OperatorId { get; set; }
     public DateTime? DateFrom { get; set; }
     public DateTime? DateTo { get; set; }

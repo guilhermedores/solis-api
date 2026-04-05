@@ -81,7 +81,6 @@ public class SalesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<SaleListResponse>> GetSales(
         [FromQuery] Guid? storeId,
-        [FromQuery] Guid? posId,
         [FromQuery] Guid? operatorId,
         [FromQuery] DateTime? dateFrom,
         [FromQuery] DateTime? dateTo,
@@ -98,7 +97,6 @@ public class SalesController : ControllerBase
         var query = new SalesQueryParameters
         {
             StoreId = storeId,
-            PosId = posId,
             OperatorId = operatorId,
             DateFrom = dateFrom,
             DateTo = dateTo,

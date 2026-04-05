@@ -28,9 +28,9 @@ public class SaleRepository : ISaleRepository
         var sql = $@"
             SELECT
                 id AS Id,
+                order_number AS OrderNumber,
                 client_sale_id AS ClientSaleId,
                 store_id AS StoreId,
-                pos_id AS PosId,
                 operator_id AS OperatorId,
                 cash_register_id AS CashRegisterId,
                 sale_datetime AS SaleDateTime,
@@ -72,7 +72,6 @@ public class SaleRepository : ISaleRepository
     public async Task<(List<Sale> Sales, int TotalCount)> GetAllAsync(
         string tenantSchema,
         Guid? storeId = null,
-        Guid? posId = null,
         Guid? operatorId = null,
         DateTime? dateFrom = null,
         DateTime? dateTo = null,
@@ -93,11 +92,6 @@ public class SaleRepository : ISaleRepository
         {
             conditions.Add("store_id = @StoreId");
             parameters.Add("StoreId", storeId.Value);
-        }
-        if (posId.HasValue)
-        {
-            conditions.Add("pos_id = @PosId");
-            parameters.Add("PosId", posId.Value);
         }
         if (operatorId.HasValue)
         {
@@ -147,7 +141,6 @@ public class SaleRepository : ISaleRepository
                 order_number AS OrderNumber,
                 client_sale_id AS ClientSaleId,
                 store_id AS StoreId,
-                pos_id AS PosId,
                 operator_id AS OperatorId,
                 cash_register_id AS CashRegisterId,
                 sale_datetime AS SaleDateTime,
@@ -184,20 +177,20 @@ public class SaleRepository : ISaleRepository
         try
         {
             transaction = (connection as System.Data.Common.DbConnection)!.BeginTransaction();
-            // Save sale
+            // Save sale — RETURNING order_number to populate the generated sequence value
             var saleSql = $@"
                 INSERT INTO {tenantSchema}.sales
-                (id, client_sale_id, store_id, pos_id, operator_id, cash_register_id, sale_datetime, status,
+                (id, client_sale_id, store_id, operator_id, cash_register_id, sale_datetime, status,
                  subtotal, discount_total, tax_total, total, payment_status, created_at, updated_at)
-                VALUES (@Id, @ClientSaleId, @StoreId, @PosId, @OperatorId, @CashRegisterId, @SaleDateTime, @Status,
-                        @Subtotal, @DiscountTotal, @TaxTotal, @Total, @PaymentStatus, @CreatedAt, @UpdatedAt)";
+                VALUES (@Id, @ClientSaleId, @StoreId, @OperatorId, @CashRegisterId, @SaleDateTime, @Status,
+                        @Subtotal, @DiscountTotal, @TaxTotal, @Total, @PaymentStatus, @CreatedAt, @UpdatedAt)
+                RETURNING order_number";
 
-            await connection.ExecuteAsync(saleSql, new
+            var generatedOrderNumber = await connection.ExecuteScalarAsync<int>(saleSql, new
             {
                 sale.Id,
                 sale.ClientSaleId,
                 sale.StoreId,
-                sale.PosId,
                 sale.OperatorId,
                 sale.CashRegisterId,
                 sale.SaleDateTime,
@@ -210,6 +203,7 @@ public class SaleRepository : ISaleRepository
                 sale.CreatedAt,
                 sale.UpdatedAt
             }, transaction);
+            typeof(Sale).GetProperty("OrderNumber")!.SetValue(sale, generatedOrderNumber);
 
             // Save items and taxes
             foreach (var item in sale.Items)

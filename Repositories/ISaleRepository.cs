@@ -12,7 +12,6 @@ public interface ISaleRepository
     Task<(List<Sale> Sales, int TotalCount)> GetAllAsync(
         string tenantSchema,
         Guid? storeId = null,
-        Guid? posId = null,
         Guid? operatorId = null,
         DateTime? dateFrom = null,
         DateTime? dateTo = null,

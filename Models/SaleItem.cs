@@ -108,11 +108,11 @@ public class SaleItem
         RecalculateTotal();
     }
 
-    // Recalculate total including taxes
+    // Recalculate tax amount (taxes are informational for NFC-e, not added to financial total)
     private void RecalculateTotal()
     {
         TaxAmount = _taxes.Sum(t => t.Amount);
-        Total = (Quantity * UnitPrice) - DiscountAmount + TaxAmount;
+        Total = (Quantity * UnitPrice) - DiscountAmount;
     }
 
     // Required by EF Core — not for domain use

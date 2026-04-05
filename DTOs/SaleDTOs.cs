@@ -9,7 +9,6 @@ public class CreateSaleRequest
     public Guid? ClientSaleId { get; set; } // For offline sync and idempotency
     [Required]
     public Guid StoreId { get; set; }
-    public Guid? PosId { get; set; }
     public Guid? OperatorId { get; set; }
     public Guid? CashRegisterId { get; set; }
     public DateTime? SaleDateTime { get; set; }
@@ -69,7 +68,6 @@ public class SaleResponse
     public Guid Id { get; set; }
     public Guid? ClientSaleId { get; set; }
     public Guid StoreId { get; set; }
-    public Guid? PosId { get; set; }
     public Guid? OperatorId { get; set; }
     public Guid? CashRegisterId { get; set; }
     public DateTime SaleDateTime { get; set; }

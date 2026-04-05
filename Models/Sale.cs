@@ -22,9 +22,6 @@ public class Sale : Entity
     [Column("store_id")]
     public Guid StoreId { get; set; }
 
-    [Column("pos_id")]
-    public Guid? PosId { get; set; }
-
     [Column("operator_id")]
     public Guid? OperatorId { get; set; }
 
@@ -73,7 +70,6 @@ public class Sale : Entity
     // Factory method
     public static Sale Create(
         Guid storeId,
-        Guid? posId,
         Guid? operatorId,
         Guid? clientSaleId = null,
         DateTime? saleDateTime = null,
@@ -83,7 +79,6 @@ public class Sale : Entity
         {
             Id = Guid.NewGuid(),
             StoreId = storeId,
-            PosId = posId,
             OperatorId = operatorId,
             ClientSaleId = clientSaleId,
             SaleDateTime = saleDateTime ?? DateTime.UtcNow,
@@ -161,13 +156,13 @@ public class Sale : Entity
             Status = "completed";
     }
 
-    // Recalculate all totals
+    // Recalculate all totals (taxes are informational for NFC-e, not added to financial total)
     private void RecalculateTotals()
     {
         Subtotal = _items.Sum(i => i.Quantity * i.UnitPrice);
         DiscountTotal = _items.Sum(i => i.DiscountAmount);
         TaxTotal = _items.Sum(i => i.TaxAmount);
-        Total = Subtotal - DiscountTotal + TaxTotal;
+        Total = Subtotal - DiscountTotal;
         UpdatedAt = DateTime.UtcNow;
     }
 

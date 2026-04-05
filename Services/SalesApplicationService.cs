@@ -52,7 +52,6 @@ public class SalesApplicationService : ISalesService
         // Create sale aggregate using factory method
         var sale = Sale.Create(
             request.StoreId,
-            request.PosId,
             request.OperatorId,
             request.ClientSaleId,
             request.SaleDateTime,
@@ -136,7 +135,6 @@ public class SalesApplicationService : ISalesService
         var (sales, total) = await _saleRepository.GetAllAsync(
             tenantSchema,
             query.StoreId,
-            query.PosId,
             query.OperatorId,
             query.DateFrom,
             query.DateTo,
@@ -332,7 +330,6 @@ public class SalesApplicationService : ISalesService
             Id = sale.Id,
             ClientSaleId = sale.ClientSaleId,
             StoreId = sale.StoreId,
-            PosId = sale.PosId,
             OperatorId = sale.OperatorId,
             CashRegisterId = sale.CashRegisterId,
             SaleDateTime = sale.SaleDateTime,
