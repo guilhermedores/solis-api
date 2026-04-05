@@ -223,7 +223,7 @@ public class CashRegisterRepository : ICashRegisterRepository
         var connection = _context.Database.GetDbConnection();
         await EnsureOpenAsync(connection, cancellationToken);
 
-        var status = payload.Status?.ToLower() == "fechado" ? "closed" : "open";
+        var status = payload.Status?.ToLower() is "fechado" or "closed" ? "closed" : "open";
 
         var sql = $@"
             INSERT INTO {tenantSchema}.cash_registers

@@ -232,6 +232,43 @@ public class CashRegisterService : ICashRegisterService
         if (entity == null)
             throw new InvalidOperationException($"Falha ao recuperar caixa {id} após sync.");
 
+        var existingMovements = await _repository.GetMovementsAsync(schema, entity.Id, cancellationToken);
+        var now = DateTime.UtcNow;
+
+        if (!existingMovements.Any(m => m.Type == "opening"))
+        {
+            var openingMovement = new CashRegisterMovement
+            {
+                Id = Guid.NewGuid(),
+                CashRegisterId = entity.Id,
+                StoreId = entity.StoreId,
+                Type = "opening",
+                Amount = entity.OpeningBalance,
+                OperatorId = entity.OperatorId,
+                OperatorName = entity.OperatorName,
+                OccurredAt = entity.OpenedAt,
+                CreatedAt = now
+            };
+            await _repository.SaveMovementAsync(schema, openingMovement, cancellationToken);
+        }
+
+        if (entity.Status == "closed" && !existingMovements.Any(m => m.Type == "closing"))
+        {
+            var closingMovement = new CashRegisterMovement
+            {
+                Id = Guid.NewGuid(),
+                CashRegisterId = entity.Id,
+                StoreId = entity.StoreId,
+                Type = "closing",
+                Amount = entity.ClosingBalance ?? 0,
+                OperatorId = entity.OperatorId,
+                OperatorName = entity.OperatorName,
+                OccurredAt = entity.ClosedAt ?? now,
+                CreatedAt = now
+            };
+            await _repository.SaveMovementAsync(schema, closingMovement, cancellationToken);
+        }
+
         _logger.LogInformation("Caixa sincronizado do agente: {Id}", id);
         return MapToResponse(entity);
     }
